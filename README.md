@@ -4,11 +4,13 @@
 
 The kind trees the Anoma protocol adapters are committed to — one per chain per environment — and the supported-token list they are built from. The `anoma-risc0-kind-trees` crate computes the roots the way the compliance circuit does, so one source answers what every protocol adapter must store.
 
+The [documentation](./docs/README.md) states what the repository contains and why the protocol needs it.
+
 ## How it fits together
 
 A kind tree maps kinds, written as `(logic_ref, label_ref)`, to kind points. Its root — the Merkle root that arm-risc0 builds over the entries — is what a protocol adapter stores via `setKindTreeRoot` and what every compliance proof that takes a kind from the tree reproduces. A chain's tree is derived: the generic call entry from the recorded forwarder, and the ERC20 entries of each supported token from the recorded ERC20 forwarder. The padding kind has no entry: nothing converts padding resources and their speed does not matter, so the compliance circuit computes their kind point, and the trees do not depend on the arm-risc0 release (ADR-0008). The ERC20 entries of one token form a fungibility domain: every listed circuit version under the forwarder's label and, for a token marked for soft migration on a chain that ran a legacy protocol adapter, the legacy ERC20 forwarder's logic ref under its own label, all assigned the kind of the active version under the label of the environment's forwarder, so their resources are fungible. The aliases are always entries. The active version keeps its own kind, which the circuit computes without the tree, so it has an entry only if the token sets `precompute_kind_point`: the circuit then checks a Merkle path to its kind point instead of computing it by hash to curve. Every entry is machine-checked — an alias against its fungibility domain, every other entry against its own kind — and no kind point is authored.
 
-A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. An environment gets a Solana tree for each cluster on which the deployment record of `anoma-pa-solana-client` holds its protocol adapter, and the forwarder program comes from the deployment record of `anomapay-spl-token-forwarder-client`. Both clients come from crates.io. `circuit-versions.json` lists the logic ref of each `anomapay-solana-resource` release. Solana has no generic call forwarder and no V1 forwarder, so its trees have neither entry (ADR-0010).
+A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. An environment gets a Solana tree for each cluster on which the deployment record of `anoma-pa-solana-client` holds its protocol adapter, and the forwarder program comes from the deployment record of `anomapay-spl-token-forwarder-client`. Both clients come from crates.io. `circuit-versions.json` lists the logic ref of each `anomapay-solana-resource` release. Solana has no generic call forwarder and no legacy protocol adapter, so its trees have neither entry (ADR-0010).
 
 ## Layout
 
@@ -90,7 +92,7 @@ The generator then writes one more member per token on every chain that has the 
 
 ## Workflows
 
-Adding a token, listing a circuit version and recording a V1 forwarder all change a chain's entries, and therefore change its root. A transaction built against the new tree verifies only after that chain's protocol adapter stores the new root, so all of them end in *Update the deployed roots*.
+Adding a token, listing a circuit version and recording a legacy ERC20 forwarder all change a chain's entries, and therefore change its root. A transaction built against the new tree verifies only after that chain's protocol adapter stores the new root, so all of them end in *Update the deployed roots*.
 
 ### Add a token
 

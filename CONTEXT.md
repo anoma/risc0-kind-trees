@@ -53,7 +53,7 @@ The conversion of the legacy-forwarder resources and of the deprecated versions'
 _Avoid_: migration (on its own: the forwarder repository moves the tokens, and the protocol adapter copies the state)
 
 **Precomputed kind point**:
-An entry that assigns a kind its own kind point, so that the compliance circuit checks a Merkle path to the point instead of computing it by hash to curve. Each time the entry count passes a power of two, the tree gains a level, and every Merkle path a proof checks gets one more hash. So the tree carries one only where proofs gain from it: the generic call kind, and the active kind of each supported token that `data/tokens.json` marks with `precompute_kind_point`. Any other kind that is not an alias has no entry, and the circuit computes its kind point.
+An entry that assigns a kind its own kind point, so that the compliance circuit makes an in-circuit check of a Merkle path to the point instead of computing it by hash to curve. Each time the entry count passes a power of two, the tree gains a level, and every Merkle path a proof checks gets one more hash. So the tree carries one only where proofs gain from it: the generic call kind, and the active kind of each supported token that `data/tokens.json` marks with `precompute_kind_point`. Any other kind that is not an alias has no entry, and the circuit computes its kind point.
 _Avoid_: cached kind, fast kind, supported kind (a token without an entry is still supported)
 
 **Circuit version**:
@@ -61,7 +61,7 @@ One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-
 _Avoid_: succession, upgrade, migration (the migration is what listing enables, not the record of it), inherit (nothing passes from one version to another — both kinds are assigned one kind point)
 
 **Legacy protocol adapter**:
-The protocol adapter that a chain ran before its upgradeable protocol adapter: one immutable contract, with no kind tree, on each chain that ran one. No new one is deployed. It is stopped, and its state is copied into the protocol adapter.
+The protocol adapter that a chain ran before its upgradeable protocol adapter: one immutable contract, with no kind tree, on each chain that ran one. No new one is deployed. On a migrated chain, it is stopped, and the protocol adapter holds a copy of its state.
 _Avoid_: v1 protocol adapter, immutable protocol adapter
 
 **Legacy ERC20 forwarder**:
@@ -72,9 +72,18 @@ _Avoid_: V1 forwarder, retired forwarder, old forwarder, immutable ERC20 forward
 An ERC20 resource whose label names a legacy ERC20 forwarder.
 _Avoid_: V1 resource, immutable-forwarder resource, 2.0.0 resource (a circuit version names a logic ref, and a logic ref does not tell a legacy-forwarder resource from one of the environment's forwarder)
 
+**Migrated chain**:
+A chain whose protocol adapter copied the state of its legacy protocol adapter.
+
 **Kind tree root**:
 The Merkle root over a tree's entries that a protocol adapter stores and every compliance proof that takes a kind from the tree reproduces. The value this repo exists to publish.
 _Avoid_: kind table root, kind tree hash, kind tree commitment
+
+**In-circuit check**:
+A check that a circuit makes: a proof of the circuit is valid only if the check holds. For example, the compliance circuit checks that all kind paths of a compliance unit give the same root.
+
+**Out-of-circuit check**:
+A check outside the circuits, for example the check of the protocol adapter that the kind tree root of a transaction is its stored root or the root of the empty tree.
 
 **Supported token**:
 An ERC20 contract or SPL token mint this project maintains kinds for, on a named chain. Being supported is a standing commitment and does not depend on where anything is deployed. Each one says whether the tree precomputes its active kind point, and each ERC20 token whether its legacy-forwarder resources can soft-migrate; Solana has no legacy forwarder.
