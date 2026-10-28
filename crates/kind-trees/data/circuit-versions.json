@@ -2,14 +2,14 @@
   "_comment": "The ERC20 transfer circuit versions. Every listed version is a member of every ERC20 fungibility domain, so its resources are fungible with every other listed version's behind the same forwarder. Exactly one version is active: it keeps its own kind, and the backend creates its resources. Every other version is deprecated: an alias of the active one, which the backend consumes and converts. A release appends the new version as active and sets the previous one to deprecated. The active version is always the highest listed. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder; until then it stays, even when the protocol adapter denies its logic ref.",
   "ERC20Resource": [
     {
-      "_comment": "The circuit that the legacy forwarders accept. transfer_library ships it as 2.0.0 for arm-risc0 1 and as 3.0.0-rc.2 for arm-risc0 2.",
+      "_comment": "The circuit that the legacy forwarders accept. transfer_library ships it as 2.0.0 for arm-risc0 1, as 3.0.0-rc.2 for arm-risc0 2, and as 3.0.0-rc.2.1 for arm-risc0 2.0.0-rc.8.1.",
       "version": "1.0.0",
       "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
       "status": "deprecated"
     },
     {
-      "version": "2.0.0-rc.2",
-      "logic_ref": "533868e294fc632d1809edb4875d6a084746817b230e95351845d175449f2404",
+      "version": "2.0.0-rc.4",
+      "logic_ref": "9c7f5feab5f4dc239b5caf180f633e4eac94b5ba6504029abee8d49541f4e026",
       "status": "active"
     }
   ],

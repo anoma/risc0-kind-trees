@@ -10,7 +10,7 @@ use anoma_rm_risc0::compliance::{self, KindTreeEntry};
 use anoma_rm_risc0::constants::{init_kind_tree_from_file, kind_tree_root};
 use anoma_rm_risc0::kind_tree::KindTree;
 use anoma_rm_risc0::nullifier_key::NullifierKey;
-use anoma_rm_risc0::resource::{ConsumedResourceWitness, Resource, ResourceWitness};
+use anoma_rm_risc0::resource::{Resource, ResourceWitness, ResourceWitnessConsumed};
 use std::path::PathBuf;
 
 fn staging_tree(chain: &Caip2ChainId) -> PathBuf {
@@ -42,7 +42,7 @@ fn unit_root(tree: &KindTree) -> Digest {
     };
     let witness = compliance::from_resources(
         vec![
-            ResourceWitness::Consumed(ConsumedResourceWitness::from_resource(consumed, nf_key)),
+            ResourceWitness::Consumed(ResourceWitnessConsumed::from_resource(consumed, nf_key)),
             ResourceWitness::Created(created),
         ],
         tree,
