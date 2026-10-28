@@ -1,5 +1,5 @@
 //! The soft-migration gate: on a fork of the staging chain, a legacy-forwarder resource converts and leaves through the
-//! staging forwarder, in transactions proven against the staging table this source generates. It needs the forked
+//! staging forwarder, in transactions proven against the staging tree this source generates. It needs the forked
 //! protocol adapter to store the generated root and the staging forwarder to hold the tokens moved from the
 //! legacy forwarder, which a promotion into `staging` requires. The fixture is alice's legacy-forwarder USDC resource
 //! on Sepolia, so a fork of another chain skips, and every run consumes the same resource, because it runs on a fork.
@@ -13,18 +13,18 @@ use alloy::primitives::{Address, B256, U256};
 use anoma_pa_evm_integration_test::keychain::EvmSigner;
 use anoma_pa_evm_integration_test::state::chains::chain_id;
 use anoma_pa_testkit::environment::{CommitmentTree, Environment, ProtocolAdapter};
-use anoma_pa_testkit::fixtures::identities;
+use anoma_pa_testkit::fixtures::{action, identities};
 use anoma_pa_testkit::{execute_tx, prove_actions};
-use anoma_risc0_kind_tables::{Caip2ChainId, table};
+use anoma_risc0_kind_trees::{Caip2ChainId, tree};
 use anoma_rm_risc0::Digest;
-use anoma_rm_risc0::compliance::KindTableEntry;
-use anoma_rm_risc0::constants::{init_kind_table_from_entries, kind_table_root};
+use anoma_rm_risc0::compliance::KindTreeEntry;
+use anoma_rm_risc0::constants::{init_kind_tree_from_entries, kind_tree_root};
 use anoma_rm_risc0::merkle_path::MerklePath;
 use anoma_rm_risc0::resource::Resource;
 use anomapay_erc20_forwarder_bindings::addresses::Environment as ForwarderEnvironment;
 use anomapay_erc20_forwarder_bindings::contract::erc20_forwarder;
 use anomapay_erc20_forwarder_integration_test::deploy::erc20_bindings::erc20_example;
-use anomapay_erc20_forwarder_integration_test::fixtures::{transfer, unwrap};
+use anomapay_erc20_forwarder_integration_test::fixtures::{ephemeral, persistent};
 use anomapay_erc20_witness::{ValueInfo, calculate_persistent_value_ref};
 use anyhow::{Context, ensure};
 use rstest::*;
@@ -122,22 +122,22 @@ async fn unspent_legacy_forwarder_resource(
     Ok(Some(legacy))
 }
 
-/// Loads the staging table this source generates for the fork's chain, before a fixture reads the table, and checks
+/// Loads the staging tree this source generates for the fork's chain, before a fixture reads the tree, and checks
 /// that the forked protocol adapter stores its root.
-async fn load_the_generated_table(env: &EvmE2eEnv) -> anyhow::Result<()> {
+async fn load_the_generated_tree(env: &EvmE2eEnv) -> anyhow::Result<()> {
     let chain = Caip2ChainId::eip155(chain_id(env)?);
-    let table = table::staging::table(chain.clone())
-        .with_context(|| format!("{chain}: no staging table"))?;
-    init_kind_table_from_entries(table.entries.iter().map(KindTableEntry::from).collect())
-        .context("failed to load the kind table")?;
-    let loaded = kind_table_root().context("no kind table loaded")?;
+    let tree =
+        tree::staging::tree(chain.clone()).with_context(|| format!("{chain}: no staging tree"))?;
+    init_kind_tree_from_entries(tree.entries.iter().map(KindTreeEntry::from).collect())
+        .context("failed to load the kind tree")?;
+    let loaded = kind_tree_root().context("no kind tree loaded")?;
     let stored = env
         .protocol_adapter
         .pa
-        .getKindTableRoot()
+        .getKindTreeRoot()
         .call()
         .await
-        .context("failed to query the kind table root")?;
+        .context("failed to query the kind tree root")?;
     ensure!(
         stored.as_slice() == loaded.as_bytes(),
         "{chain}: the protocol adapter stores {stored}, the source generates {loaded}"
@@ -145,7 +145,7 @@ async fn load_the_generated_table(env: &EvmE2eEnv) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The recorded staging ERC20 forwarder, the environment's forwarder of the generated staging table. It must serve the
+/// The recorded staging ERC20 forwarder, the environment's forwarder of the generated staging tree. It must serve the
 /// forked protocol adapter and hold at least the quantity of the legacy-forwarder resource.
 async fn staging_forwarder(
     env: &EvmE2eEnv,
@@ -187,25 +187,18 @@ async fn unwrap_releases_a_legacy_forwarder_resource_through_the_staging_forward
     let Some(legacy) = unspent_legacy_forwarder_resource(&env).await? else {
         return Ok(());
     };
-    load_the_generated_table(&env).await?;
+    load_the_generated_tree(&env).await?;
     let forwarder = staging_forwarder(&env, &legacy).await?;
     let alice = identities::alice()?;
     let recipient = alice.address();
     let quantity = U256::from(legacy.resource.quantity);
 
-    let unwrap = unwrap::build(
-        legacy.resource,
-        forwarder,
-        legacy.token,
-        0,
-        Some(legacy.path),
-        unwrap::Overrides {
-            owner: Some(alice),
-            ..unwrap::Overrides::default()
-        },
-    )
+    let unwrap = action::build([
+        persistent::consumed(&alice, legacy.resource, legacy.path, None),
+        ephemeral::created(recipient, forwarder, legacy.token, legacy.resource.quantity),
+    ])
     .context("failed to build the unwrap action")?;
-    let tx = prove_actions(&env, &[unwrap.witnesses])
+    let tx = prove_actions(&env, [&unwrap])
         .await
         .context("failed to prove the unwrap action")?;
 
@@ -247,23 +240,22 @@ async fn transfer_converts_a_legacy_forwarder_resource_into_a_staging_forwarder_
     let Some(legacy) = unspent_legacy_forwarder_resource(&env).await? else {
         return Ok(());
     };
-    load_the_generated_table(&env).await?;
+    load_the_generated_tree(&env).await?;
     let forwarder = staging_forwarder(&env, &legacy).await?;
     let quantity = U256::from(legacy.resource.quantity);
     let usdc = erc20_example(legacy.token, env.protocol_adapter.pa.provider().clone());
     let forwarder_before = usdc.balanceOf(forwarder).call().await?;
+    let alice = identities::alice()?;
+    let bob = identities::bob()?;
 
     // Alice's legacy-forwarder resource becomes bob's resource under the staging forwarder's label. No token moves.
-    let transfer = transfer::build(
-        legacy.resource,
-        forwarder,
-        legacy.token,
-        0,
-        Some(legacy.path),
-        transfer::Overrides::default(),
-    )
+    let transfer = action::build([
+        persistent::consumed(&alice, legacy.resource, legacy.path, None),
+        persistent::created(&bob, forwarder, legacy.token, legacy.resource.quantity),
+    ])
     .context("failed to build the transfer action")?;
-    let tx = prove_actions(&env, &[transfer.witnesses])
+    let created = transfer.resources()[1];
+    let tx = prove_actions(&env, [&transfer])
         .await
         .context("failed to prove the transfer action")?;
     execute_tx(&mut env, tx)
@@ -283,28 +275,26 @@ async fn transfer_converts_a_legacy_forwarder_resource_into_a_staging_forwarder_
     let path = env
         .protocol_adapter()
         .commitment_tree()
-        .path_to(transfer.created_persistent.commitment())
+        .path_to(created.commitment())
         .context("failed to generate the unwrap merkle path")?;
-    let unwrap = unwrap::build(
-        transfer.created_persistent,
-        forwarder,
-        legacy.token,
-        1,
-        Some(path),
-        unwrap::Overrides::default(),
-    )
+    let unwrap = action::build([
+        persistent::consumed(&bob, created, path, None),
+        ephemeral::created(bob.address(), forwarder, legacy.token, created.quantity),
+    ])
     .context("failed to build the unwrap action")?;
-    let tx = prove_actions(&env, &[unwrap.witnesses])
+    let tx = prove_actions(&env, [&unwrap])
         .await
         .context("failed to prove the unwrap action")?;
 
-    let bob = identities::bob()?.address();
-    let bob_before = usdc.balanceOf(bob).call().await?;
+    let bob_before = usdc.balanceOf(bob.address()).call().await?;
     execute_tx(&mut env, tx)
         .await
         .context("failed to execute the unwrap action")?;
 
-    assert_eq!(usdc.balanceOf(bob).call().await? - bob_before, quantity);
+    assert_eq!(
+        usdc.balanceOf(bob.address()).call().await? - bob_before,
+        quantity
+    );
     assert_eq!(
         forwarder_before - usdc.balanceOf(forwarder).call().await?,
         quantity
