@@ -43,6 +43,11 @@
     {
       "version": "2.0.0-rc.9",
       "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+      "status": "deprecated"
+    },
+    {
+      "version": "2.0.0-rc.11",
+      "logic_ref": "d3d1bc64d5fdceb8dca48c96bc6a9774b14dec039460e9a64ad2c0416c8a5b10",
       "status": "active"
     }
   ]
