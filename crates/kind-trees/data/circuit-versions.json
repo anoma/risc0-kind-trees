@@ -46,8 +46,8 @@
       "status": "deprecated"
     },
     {
-      "version": "2.0.0-rc.11",
-      "logic_ref": "d3d1bc64d5fdceb8dca48c96bc6a9774b14dec039460e9a64ad2c0416c8a5b10",
+      "version": "2.0.0-rc.12",
+      "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
       "status": "active"
     }
   ]
