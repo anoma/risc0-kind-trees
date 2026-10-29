@@ -30,8 +30,6 @@ bs58 = "0.5.1"
 dotenvy = "0.15.7"
 hex = "0.4.3"
 k256 = { version = "0.13.3", features = ["arithmetic", "hash2curve"] }
-# The legacy circuit, which the legacy forwarders accept. Rev 4b9562e pairs it with a host crate for arm-risc0 2.0.0-rc.8.1 and pins its witness crate.
-legacy-anomapay-erc20-library = { package = "transfer_library", git = "https://github.com/anoma/anomapay-erc20-resource", rev = "4b9562e5e918d4a6182872d50f183eb7fe9caf37" }
 risc0-zkvm = { version = "3.0.6", default-features = false }
 rstest = "0.28.0"
 semver = "1.0.27"
