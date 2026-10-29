@@ -1165,7 +1165,6 @@ dependencies = [
  "serde_json",
  "solana-cluster-type",
  "thiserror 2.0.21",
- "transfer_library",
 ]
 
 [[package]]
