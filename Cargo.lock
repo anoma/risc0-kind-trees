@@ -1195,6 +1195,7 @@ dependencies = [
  "solana-pubkey 3.0.0",
  "spl-token-interface",
  "tokio",
+ "transfer_witness 2.0.0-rc.11",
 ]
 
 [[package]]
@@ -8246,7 +8247,20 @@ dependencies = [
  "k256",
  "lazy_static",
  "serde",
- "transfer_witness",
+ "transfer_witness 3.0.0-rc.2.1",
+]
+
+[[package]]
+name = "transfer_witness"
+version = "2.0.0-rc.11"
+source = "git+https://github.com/anoma/anomapay-solana-resource?tag=v2.0.0-rc.11#5519385a9ba2708d9a62ba1bef07c34362113399"
+dependencies = [
+ "anoma-rm-risc0",
+ "anoma-rm-risc0-gadgets",
+ "bincode",
+ "k256",
+ "serde",
+ "serde_with",
 ]
 
 [[package]]
