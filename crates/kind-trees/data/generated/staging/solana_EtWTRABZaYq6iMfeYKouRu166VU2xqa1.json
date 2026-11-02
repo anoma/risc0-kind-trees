@@ -8,14 +8,14 @@
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
       "status": "deprecated",
       "alias_of": {
-        "version": "2.0.0-rc.9",
-        "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
         "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
       }
     },
     "logic_ref": "179ebea4903d61c69dbdaba15db26e9726f7d7fb39098a6a2c0f94be854295c6",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   },
   {
     "_metadata": {
@@ -26,14 +26,14 @@
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
       "status": "deprecated",
       "alias_of": {
-        "version": "2.0.0-rc.9",
-        "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
         "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
       }
     },
     "logic_ref": "1c7232d6d6bea7551eddbb2a3df9f8ace1037e27943985389f735100d7faf183",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   },
   {
     "_metadata": {
@@ -44,14 +44,14 @@
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
       "status": "deprecated",
       "alias_of": {
-        "version": "2.0.0-rc.9",
-        "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
         "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
       }
     },
     "logic_ref": "1f90852b23dab294cadc7384b6185160726f6d04c58881c0f02c9c8f64625290",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   },
   {
     "_metadata": {
@@ -62,14 +62,14 @@
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
       "status": "deprecated",
       "alias_of": {
-        "version": "2.0.0-rc.9",
-        "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
         "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
       }
     },
     "logic_ref": "49302424dfb8d0b9479008cfa4ae48bcc83e5b4c46132cf1c4978498a6cb5d94",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   },
   {
     "_metadata": {
@@ -78,11 +78,29 @@
       "name": "TEST",
       "mint": "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr",
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
-      "status": "active"
+      "status": "deprecated",
+      "alias_of": {
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
+        "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
+      }
     },
     "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
+  },
+  {
+    "_metadata": {
+      "type": "SPLTokenResource",
+      "version": "2.0.0-rc.12",
+      "name": "TEST",
+      "mint": "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr",
+      "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
+      "status": "active"
+    },
+    "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
+    "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   },
   {
     "_metadata": {
@@ -93,13 +111,13 @@
       "forwarder": "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4",
       "status": "deprecated",
       "alias_of": {
-        "version": "2.0.0-rc.9",
-        "logic_ref": "65328fb289d654b428903bec4d5e19a1e2f62093846abed3ee5e4081aa1a74fd",
+        "version": "2.0.0-rc.12",
+        "logic_ref": "c17a7ca5a0ec39b80d6efd7c1c8b810c3d9fb722ab32fbbc36f9eb683bce0b5b",
         "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8"
       }
     },
     "logic_ref": "cd2b9a7edfd4558b581fa25fd4d7c2064ae7f22905c9de774d912ad95625a0d1",
     "label_ref": "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-    "kind_base": "042eb60badd3c7a4d1b3259ea6cf9008ffba1a9e092f6a3238e13c9237fcdc517841e1e3f07c78f2bf5eb419ed26b2e9168986081b14683ecd78b34dcb5aee5e50"
+    "kind_base": "047edc74e704f3186546fb4a41123cfb71c564bff805636461107d056adc00b792652a1e84b908414a7b10ae12483a85ac3a6e2bcdae769fec11d5a6827e7de3dd"
   }
 ]
