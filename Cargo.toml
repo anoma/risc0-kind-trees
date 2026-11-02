@@ -47,7 +47,7 @@ anomapay-erc20-forwarder-integration-test = { git = "https://github.com/anoma/an
 # The AnomaPay Solana resource's witness crate, pinned by git tag: it is not published (`transfer_witness` on crates.io is
 # the ERC20 resource's).
 anomapay-solana-transfer-witness = { package = "transfer_witness", git = "https://github.com/anoma/anomapay-solana-resource", tag = "v2.0.0-rc.12" }
-solana-cluster-type = "3.2.1"
+solana-cluster-type = "3"
 solana-program-pack = "3"
 solana-pubkey = "3"
 solana-rpc-client = "4"
