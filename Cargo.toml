@@ -46,7 +46,7 @@ anomapay-erc20-forwarder-integration-test = { git = "https://github.com/anoma/an
 # crate, pinned by git tag.
 anoma-pa-solana-client = { git = "https://github.com/anoma/anoma-pa-solana-client", tag = "bindings/v0.12.0" }
 anomapay-spl-token-forwarder-client = { git = "https://github.com/anoma/anomapay-spl-token-forwarder", tag = "bindings/v0.11.0" }
-anomapay-solana-transfer-witness = { package = "transfer_witness", git = "https://github.com/anoma/anomapay-solana-resource", tag = "v2.0.0-rc.11" }
+anomapay-solana-transfer-witness = { package = "transfer_witness", git = "https://github.com/anoma/anomapay-solana-resource", tag = "v2.0.0-rc.12" }
 solana-cluster-type = "3.2.1"
 solana-program-pack = "3"
 solana-pubkey = "3"

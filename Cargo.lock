@@ -1471,7 +1471,7 @@ dependencies = [
  "solana-rpc-client",
  "spl-token-interface",
  "tokio",
- "transfer_witness 2.0.0-rc.11",
+ "transfer_witness 2.0.0-rc.12",
 ]
 
 [[package]]
@@ -1486,9 +1486,9 @@ dependencies = [
 
 [[package]]
 name = "anoma-rm-core"
-version = "2.0.0-rc.8.1"
+version = "2.0.0-rc.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "574ea77bcf67d82cab018d334bf896132c37746892e91d348c5e2588a4912648"
+checksum = "36ba9c592504514b685e3e92c802af7f3108f3d6b9b8868ddbc20c8d6e54325c"
 dependencies = [
  "bincode",
  "bytemuck",
@@ -1500,9 +1500,9 @@ dependencies = [
 
 [[package]]
 name = "anoma-rm-risc0"
-version = "2.0.0-rc.8.1"
+version = "2.0.0-rc.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6ca86610b1937f07c443c5902297107b6939b8232763e649c79d02b08b13fd1"
+checksum = "f6ac294be40197650b1e78609e876642ebb364427287d59a9cf1bfac8abf016a"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -1523,9 +1523,9 @@ dependencies = [
 
 [[package]]
 name = "anoma-rm-risc0-gadgets"
-version = "2.0.0-rc.8.1"
+version = "2.0.0-rc.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bd2c5904affd6cdab244bfc48f4e8af311b02ae5ea05cb661774df14fe45f4e"
+checksum = "a0b2dd20e28b4e0956f719148721deb63e87c7791496f466fe892bb74fdba9d9"
 dependencies = [
  "aes-gcm",
  "alloy-primitives",
@@ -6344,7 +6344,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -6357,7 +6357,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -10107,8 +10107,8 @@ dependencies = [
 
 [[package]]
 name = "transfer_witness"
-version = "2.0.0-rc.11"
-source = "git+https://github.com/anoma/anomapay-solana-resource?tag=v2.0.0-rc.11#5519385a9ba2708d9a62ba1bef07c34362113399"
+version = "2.0.0-rc.12"
+source = "git+https://github.com/anoma/anomapay-solana-resource?tag=v2.0.0-rc.12#900a45741de60a98034bbb0a79dcd8425b0be7a8"
 dependencies = [
  "anoma-rm-risc0",
  "anoma-rm-risc0-gadgets",
