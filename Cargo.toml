@@ -18,11 +18,13 @@ anoma-generic-call-forwarder-bindings = "2.0.0-rc.8"
 # The circuit crates are pinned exactly: another build has another logic ref, and so another kind.
 anoma-generic-call-library = "=2.0.0-rc.4"
 anoma-pa-evm-bindings = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.20" }
+anoma-pa-solana-client = "0.12.1"
 anoma-pa-testkit = "1.0.0-rc.6"
 anoma-rm-risc0 = { version = "2.0.0-rc.8.1", default-features = false, features = [
   "transaction",
 ] }
 anomapay-erc20-forwarder-bindings = "3.0.0-rc.19"
+anomapay-spl-token-forwarder-client = "0.11.1"
 anomapay_erc20_library = "=2.0.0-rc.4"
 anomapay_erc20_witness = "=2.0.0-rc.4"
 anyhow = "1.0.104"
@@ -42,10 +44,8 @@ tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }
 anoma-pa-evm-integration-test = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.20" }
 anomapay-erc20-forwarder-integration-test = { git = "https://github.com/anoma/anomapay-erc20-forwarder", tag = "bindings/v3.0.0-rc.19" }
 
-# The Solana programs' clients, with their deployment records and instances, and the AnomaPay Solana resource's witness
-# crate, pinned by git tag.
-anoma-pa-solana-client = { git = "https://github.com/anoma/anoma-pa-solana-client", tag = "bindings/v0.12.0" }
-anomapay-spl-token-forwarder-client = { git = "https://github.com/anoma/anomapay-spl-token-forwarder", tag = "bindings/v0.11.0" }
+# The AnomaPay Solana resource's witness crate, pinned by git tag: it is not published (`transfer_witness` on crates.io is
+# the ERC20 resource's).
 anomapay-solana-transfer-witness = { package = "transfer_witness", git = "https://github.com/anoma/anomapay-solana-resource", tag = "v2.0.0-rc.12" }
 solana-cluster-type = "3.2.1"
 solana-program-pack = "3"
