@@ -1,15 +1,15 @@
-//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`, the Solana
-//! deployment record in `deployments`) and the pinned dependencies (the generic-call logic ref, the EVM forwarder
-//! and protocol adapter deployment records). CI reruns this and fails on any diff, so the committed artifacts
-//! always match the source.
+//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`) and the
+//! pinned dependencies (the generic-call logic ref, the forwarder and protocol adapter deployment
+//! records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
 
 use alloy::primitives::Address;
 use alloy_chains::NamedChain;
 use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCallEnvironment;
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
+use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
     AliasOf, Caip2ChainId, Chain, CircuitVersion, Entry, Metadata, SolanaAddress, SolanaCluster,
-    Status, circuits, deployments, kind, root, tokens,
+    Status, circuits, kind, root, tokens,
 };
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
 use anyhow::{Context, Result, bail, ensure};
@@ -74,6 +74,14 @@ fn generic_call_environment(environment: Environment) -> GenericCallEnvironment 
     match environment {
         Environment::Staging => GenericCallEnvironment::Staging,
         Environment::Production => GenericCallEnvironment::Production,
+    }
+}
+
+/// The Solana programs' clients share one environment, the adapter client's.
+fn solana_environment(environment: Environment) -> SolanaEnvironment {
+    match environment {
+        Environment::Staging => SolanaEnvironment::Staging,
+        Environment::Production => SolanaEnvironment::Production,
     }
 }
 
@@ -255,20 +263,29 @@ fn check_circuit_versions(versions: &Versions) -> Result<()> {
     Ok(())
 }
 
-/// The Solana cluster an environment's tree is built for: devnet is staging, mainnet-beta is production.
-fn solana_cluster(environment: Environment) -> SolanaCluster {
-    match environment {
-        Environment::Staging => SolanaCluster::Devnet,
-        Environment::Production => SolanaCluster::MainnetBeta,
-    }
-}
-
-/// A Solana cluster's entries: one fungibility domain per supported mint under the forwarder program's label.
-/// As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder, so no generic call
-/// entry.
-fn solana_entries(cluster: SolanaCluster, forwarder: SolanaAddress) -> Result<Vec<Entry>> {
+/// A Solana cluster's entries: one fungibility domain per supported mint under the label of the environment's SPL
+/// token forwarder program. As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder, so
+/// no generic call entry.
+fn solana_entries(environment: Environment, cluster: SolanaCluster) -> Result<Vec<Entry>> {
     let mut entries = Vec::new();
-    for token in tokens::spl_on(cluster) {
+    let supported = tokens::spl_on(cluster);
+    let Some(forwarder) =
+        anomapay_spl_token_forwarder_client::addresses::spl_token_forwarder_address(
+            solana_environment(environment),
+            &cluster.into(),
+        )
+    else {
+        if !supported.is_empty() {
+            eprintln!(
+                "{}: {} supported mints but no SPL token forwarder recorded - no token kinds emitted",
+                cluster.name(),
+                supported.len()
+            );
+        }
+        return Ok(entries);
+    };
+    let forwarder = SolanaAddress::new(forwarder.to_bytes());
+    for token in supported {
         domain(
             circuits::spl_token(),
             circuits::spl_token_active(),
@@ -399,18 +416,18 @@ fn main() -> Result<()> {
                 chain_entries(environment, chain, &versions)?,
             ));
         }
-        let cluster = solana_cluster(environment);
-        match deployments::solana_deployment(cluster) {
-            Some(deployment) => trees.push((
+        let mut clusters = anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
+            solana_environment(environment),
+        )
+        .into_iter()
+        .map(|(cluster, _)| SolanaCluster::try_from(cluster))
+        .collect::<anoma_risc0_kind_trees::Result<Vec<_>>>()?;
+        clusters.sort();
+        for cluster in clusters {
+            trees.push((
                 Chain::Solana(cluster),
-                solana_entries(cluster, deployment.forwarder)?,
-            )),
-            None if tokens::spl_on(cluster).is_empty() => {}
-            None => eprintln!(
-                "{}: {} supported mints but no deployment recorded - no token kinds emitted",
-                cluster.name(),
-                tokens::spl_on(cluster).len()
-            ),
+                solana_entries(environment, cluster)?,
+            ));
         }
 
         let mut files = Vec::new();

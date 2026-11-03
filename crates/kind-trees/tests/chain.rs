@@ -1,6 +1,7 @@
 use alloy_chains::NamedChain;
 use anoma_risc0_kind_trees::chain::*;
 use anoma_risc0_kind_trees::{Error, Result};
+use solana_cluster_type::ClusterType;
 use std::collections::BTreeMap;
 
 const SOLANA_MAINNET: &str = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
@@ -119,6 +120,26 @@ fn a_solana_cluster_is_named_by_its_caip2_chain_id() {
         Caip2ChainId::from(SolanaCluster::MainnetBeta),
         parse(SOLANA_MAINNET).unwrap()
     );
+}
+
+/// The deployment records name a cluster by its `ClusterType`: the two this crate names convert both ways, and any
+/// other is an error.
+#[test]
+fn a_solana_cluster_converts_to_and_from_its_cluster_type() {
+    for (cluster, cluster_type) in [
+        (SolanaCluster::MainnetBeta, ClusterType::MainnetBeta),
+        (SolanaCluster::Devnet, ClusterType::Devnet),
+    ] {
+        assert_eq!(ClusterType::from(cluster), cluster_type);
+        assert_eq!(SolanaCluster::try_from(cluster_type).unwrap(), cluster);
+    }
+    for cluster_type in [ClusterType::Testnet, ClusterType::Development] {
+        let converted = SolanaCluster::try_from(cluster_type);
+        assert!(
+            matches!(converted, Err(Error::UnknownSolanaCluster(unknown)) if unknown == cluster_type),
+            "{cluster_type:?}: {converted:?}"
+        );
+    }
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use crate::chain::Caip2ChainId;
+use solana_cluster_type::ClusterType;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -19,6 +20,8 @@ pub enum Error {
     InvalidCaip2ChainId { value: String, reason: &'static str },
     #[error("no chain known for {0}")]
     UnknownChain(Caip2ChainId),
+    #[error("no chain known for the Solana cluster {0:?}")]
+    UnknownSolanaCluster(ClusterType),
     #[error("no tree recorded for {0}")]
     UnrecordedChain(Caip2ChainId),
 }
