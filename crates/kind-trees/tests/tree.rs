@@ -1,13 +1,25 @@
 use alloy_chains::NamedChain;
 use anoma_risc0_kind_trees::chain::{Chain, SolanaCluster};
 use anoma_risc0_kind_trees::circuits::{self, CircuitVersion, Status};
-use anoma_risc0_kind_trees::deployments::solana_deployment;
 use anoma_risc0_kind_trees::entry::Metadata;
 use anoma_risc0_kind_trees::kind;
 use anoma_risc0_kind_trees::tree::*;
-use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error};
+use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error, SolanaAddress};
 use anomapay_erc20_forwarder_bindings::addresses::{Environment, erc20_forwarder_address};
+use anomapay_spl_token_forwarder_client::addresses::{
+    Environment as SolanaEnvironment, spl_token_forwarder_address,
+};
 use risc0_zkvm::Digest;
+
+/// The SPL token forwarder the environment records on the cluster, from the forwarder client's deployment record.
+fn spl_forwarder(environment: Environment, cluster: SolanaCluster) -> Option<SolanaAddress> {
+    let environment = match environment {
+        Environment::Staging => SolanaEnvironment::Staging,
+        Environment::Production => SolanaEnvironment::Production,
+    };
+    spl_token_forwarder_address(environment, &cluster.into())
+        .map(|forwarder| SolanaAddress::new(forwarder.to_bytes()))
+}
 
 /// The alias rules of a fungibility domain, checked on one member: it is assigned the domain's kind point
 /// (the kind of the active version under the label of the environment's forwarder), its version is in `listed`, it
@@ -66,7 +78,7 @@ fn check_member(
 /// No kind point is authored. A token entry is assigned its fungibility domain's kind point — the kind of the
 /// active version under the label of the environment's forwarder on the chain — and every alias says so in
 /// `alias_of`. Every other entry is assigned its own kind. This reads the embedded trees only; the environment's
-/// forwarder comes from the deployment records (the ERC20 forwarder bindings, and the Solana deployment record),
+/// forwarder comes from the deployment records (the ERC20 forwarder bindings and the SPL token forwarder client),
 /// never from the entries themselves, so a tree built for the wrong forwarder fails here.
 #[test]
 fn token_entries_share_their_fungibility_domains_kind_point() {
@@ -79,10 +91,7 @@ fn token_entries_share_their_fungibility_domains_kind_point() {
             let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
             let (erc20_forwarder, spl_forwarder) = match known {
                 Chain::Evm(named) => (erc20_forwarder_address(environment, &named), None),
-                Chain::Solana(cluster) => (
-                    None,
-                    solana_deployment(cluster).map(|deployment| deployment.forwarder),
-                ),
+                Chain::Solana(cluster) => (None, spl_forwarder(environment, cluster)),
             };
             for entry in &tree.entries {
                 let (listed, active, active_label, status) = match &entry.metadata {
@@ -100,7 +109,7 @@ fn token_entries_share_their_fungibility_domains_kind_point() {
                     Some(Metadata::SplToken { mint, status, .. }) => {
                         let forwarder = spl_forwarder.unwrap_or_else(|| {
                             panic!(
-                                "{context}: an SPL token entry but no Solana deployment recorded"
+                                "{context}: an SPL token entry but no SPL token forwarder recorded"
                             )
                         });
                         (
@@ -149,12 +158,11 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_poi
                         .collect(),
                     None => Vec::new(),
                 },
-                Chain::Solana(cluster) => match solana_deployment(cluster) {
-                    Some(deployment) => anoma_risc0_kind_trees::tokens::spl_on(cluster)
+                Chain::Solana(cluster) => match spl_forwarder(environment, cluster) {
+                    Some(forwarder) => anoma_risc0_kind_trees::tokens::spl_on(cluster)
                         .iter()
                         .map(|token| {
-                            let label_ref =
-                                kind::spl_token_label_ref(&deployment.forwarder, &token.mint);
+                            let label_ref = kind::spl_token_label_ref(&forwarder, &token.mint);
                             let active = (circuits::spl_token_active().logic_ref, label_ref);
                             (token.symbol.as_str(), active, token.precompute_kind_point)
                         })

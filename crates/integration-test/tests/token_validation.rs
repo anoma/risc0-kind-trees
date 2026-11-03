@@ -5,7 +5,7 @@
 use alloy::providers::Provider;
 use alloy::sol;
 use anoma_risc0_kind_trees::tokens;
-use anoma_risc0_kind_trees_integration_test::{provider, solana_rpc};
+use anoma_risc0_kind_trees_integration_test::{mint_decimals, provider, solana_rpc};
 use anyhow::{Context, Result, ensure};
 
 sol! {
@@ -46,8 +46,7 @@ async fn every_supported_token_reports_its_recorded_identity() -> Result<()> {
         let rpc = solana_rpc(cluster);
         for token in supported {
             let context = || format!("{} ({}) on {}", token.symbol, token.mint, cluster.name());
-            let decimals = rpc
-                .mint_decimals(&token.mint)
+            let decimals = mint_decimals(&rpc, &token.mint)
                 .await
                 .with_context(context)?
                 .with_context(|| format!("no mint account at {}", context()))?;

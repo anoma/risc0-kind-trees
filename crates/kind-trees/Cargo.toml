@@ -12,12 +12,14 @@ edition.workspace = true
 [features]
 # Converts an entry into the resource machine's kind tree entry, for a consumer that loads a tree to prove.
 arm = ["dep:anoma-rm-risc0"]
-# The generator reads the live circuit IDs and forwarder deployments, which the library's consumers don't need.
+# The generator reads the live circuit IDs and the protocol adapter and forwarder deployments, which the library's consumers don't need.
 generate = [
   "dep:anoma-generic-call-forwarder-bindings",
   "dep:anoma-generic-call-library",
   "dep:anoma-pa-evm-bindings",
+  "dep:anoma-pa-solana-client",
   "dep:anoma-rm-risc0",
+  "dep:anomapay-spl-token-forwarder-client",
   "dep:anomapay-erc20-forwarder-bindings",
   "dep:anomapay_erc20_library",
   "dep:anyhow",
@@ -29,6 +31,8 @@ alloy-chains = { workspace = true }
 anoma-generic-call-forwarder-bindings = { workspace = true, optional = true }
 anoma-generic-call-library = { workspace = true, optional = true }
 anoma-pa-evm-bindings = { workspace = true, optional = true }
+anoma-pa-solana-client = { workspace = true, optional = true }
+anomapay-spl-token-forwarder-client = { workspace = true, optional = true }
 anoma-rm-risc0 = { workspace = true, optional = true }
 anomapay-erc20-forwarder-bindings = { workspace = true, optional = true }
 anomapay_erc20_library = { workspace = true, optional = true }
@@ -44,8 +48,10 @@ solana-cluster-type = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-# The EVM deployment record the offline tree test reads the environments' forwarders from.
+# The deployment records the offline tree tests read the environments' protocol adapters and forwarders from.
+anoma-pa-solana-client = { workspace = true }
 anomapay-erc20-forwarder-bindings = { workspace = true }
+anomapay-spl-token-forwarder-client = { workspace = true }
 
 [[bin]]
 name = "generate"
