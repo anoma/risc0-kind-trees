@@ -1,6 +1,6 @@
 //! A Solana account address: a 32-byte key written in base58, as program ids and mints are written everywhere
-//! on Solana. Kept as bytes here so the library carries no Solana SDK; the generator and the integration tests
-//! convert from the SDK's `Pubkey` where they read one.
+//! on Solana. Kept as bytes here so the library carries no Solana SDK; code that holds an SDK `Pubkey`
+//! converts through the bytes.
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::str::FromStr;

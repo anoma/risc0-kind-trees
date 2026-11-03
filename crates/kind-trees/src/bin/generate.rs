@@ -1,6 +1,7 @@
-//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`) and the
-//! pinned dependencies (the generic-call logic ref, the forwarder and protocol adapter deployment
-//! records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
+//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`, the Solana
+//! deployment record in `deployments`) and the pinned dependencies (the generic-call logic ref, the EVM forwarder
+//! and protocol adapter deployment records). CI reruns this and fails on any diff, so the committed artifacts
+//! always match the source.
 
 use alloy::primitives::Address;
 use alloy_chains::NamedChain;
