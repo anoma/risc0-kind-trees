@@ -224,7 +224,7 @@ fn staging_records_the_solana_devnet_tree() {
         );
         assert_eq!(
             member.label_ref.to_string(),
-            "6b883f562948fd8812d0c3c26559b237088850f957283cb777c59130da1f7c17",
+            "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
             "the {} member's label is sha256(devnet forwarder ‖ test mint)",
             circuit.version
         );

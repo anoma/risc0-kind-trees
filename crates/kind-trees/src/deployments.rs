@@ -1,7 +1,6 @@
 //! The Solana deployment record: the protocol adapter each recorded cluster's tree is installed on, and the SPL
-//! token forwarder program whose label the SPL token members carry. The client crates record the devnet
-//! deployment as their program ids (anoma-pa-solana-client the adapter's, anomapay-spl-token-forwarder-client the
-//! forwarder's); a mainnet-beta record appears there when V2 deploys to it, and this reads it then.
+//! token forwarder program whose label the SPL token members carry. Devnet runs the V2 programs; mainnet-beta has
+//! no V2 deployment.
 use crate::chain::SolanaCluster;
 use crate::solana::SolanaAddress;
 
@@ -16,11 +15,15 @@ pub struct SolanaDeployment {
 pub fn solana_deployment(cluster: SolanaCluster) -> Option<SolanaDeployment> {
     match cluster {
         SolanaCluster::Devnet => Some(SolanaDeployment {
-            adapter: SolanaAddress::new(anoma_pa_solana_client::PA_PROGRAM_ID.to_bytes()),
-            forwarder: SolanaAddress::new(
-                anomapay_spl_token_forwarder_client::FORWARDER_PROGRAM_ID.to_bytes(),
-            ),
+            adapter: address("2gH5DnTwDLLFk3oYxnbrceSFdTMtvaxQz29x5W8Etmpx"),
+            forwarder: address("34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4"),
         }),
         SolanaCluster::MainnetBeta => None,
     }
+}
+
+fn address(base58: &str) -> SolanaAddress {
+    base58
+        .parse()
+        .unwrap_or_else(|error| panic!("a recorded program id: {error}"))
 }

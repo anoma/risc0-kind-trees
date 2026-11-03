@@ -6,11 +6,11 @@ fn devnet_records_the_v2_programs_and_mainnet_beta_none() {
     let devnet = solana_deployment(SolanaCluster::Devnet).unwrap();
     assert_eq!(
         devnet.adapter.to_string(),
-        "5zeqkB3kc9fd1RvaXB2GeMB53Jgf98QJtaFK38e6tTsc"
+        "2gH5DnTwDLLFk3oYxnbrceSFdTMtvaxQz29x5W8Etmpx"
     );
     assert_eq!(
         devnet.forwarder.to_string(),
-        "BsfuXpxw8oCmZXnYijyQkUYNcCnuskFZbYizmWLnpSU7"
+        "34kd782wMwzkdwGFS5jfGGdTAz8zbaxVczQHs3E8oKF4"
     );
     assert_eq!(solana_deployment(SolanaCluster::MainnetBeta), None);
 }
