@@ -42,7 +42,7 @@ impl Tree {
             .all(|pair| pair[0].key() < pair[1].key())
     }
 
-    /// The aliases: the entries assigned another kind as their kind point. Only the tree can express them, and they
+    /// The aliases: the entries assigned another kind as their kind base. Only the tree can express them, and they
     /// are the review surface.
     pub fn aliases(&self) -> Vec<&Entry> {
         self.entries

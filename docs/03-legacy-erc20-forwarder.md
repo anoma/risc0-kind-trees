@@ -4,7 +4,7 @@ This document specifies the entries that let legacy-forwarder resources convert 
 
 ## 1. Legacy-forwarder entries
 
-On a migrated chain, users convert their legacy-forwarder resources into resources of the active version. For this, on a chain with a legacy ERC20 forwarder, the fungibility domain of a token also holds an entry for the logic ref of the legacy ERC20 forwarder under the label ref of the legacy ERC20 forwarder, if `tokens.json` marks the token with `soft_migrate_from_legacy_forwarder`. Like each entry of the domain, it gets the kind point of the active version under the label ref of the ERC20 forwarder of the environment ([`01-entries-and-rules.md`](./01-entries-and-rules.md)).
+On a migrated chain, users convert their legacy-forwarder resources into resources of the active version. For this, on a chain with a legacy ERC20 forwarder, the fungibility domain of a token also holds an entry for the logic ref of the legacy ERC20 forwarder under the label ref of the legacy ERC20 forwarder, if `tokens.json` marks the token with `soft_migrate_from_legacy_forwarder`. Like each entry of the domain, it gets the kind base of the active version under the label ref of the ERC20 forwarder of the environment ([`01-entries-and-rules.md`](./01-entries-and-rules.md)).
 
 ## 2. Rules and checks
 

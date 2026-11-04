@@ -1,7 +1,7 @@
 //! Every ERC20 and SPL token member of a generated tree balances the active member of its fungibility domain in a
-//! compliance unit, whether the tree lists the active member or the circuit computes its kind point by hash to curve.
+//! compliance unit, whether the tree lists the active member or the circuit computes its kind base by hash to curve.
 //! The resources take their labels from their transfer circuit's derivation, and the compliance constraints take their
-//! kinds from the tree, so the generated keys and kind points are checked against both circuits. It needs no chain.
+//! kinds from the tree, so the generated keys and kind bases are checked against both circuits. It needs no chain.
 
 use anoma_risc0_kind_trees::tree::{production, staging};
 use anoma_risc0_kind_trees::{Entry, Metadata};
@@ -31,7 +31,7 @@ fn resource_kind(entry: &Entry) -> Option<Kind> {
     Some((entry.logic_ref, label_ref))
 }
 
-/// The kind this entry takes its kind point from: the kind its `alias_of` names, or its own.
+/// The kind this entry takes its kind base from: the kind its `alias_of` names, or its own.
 fn active_kind(entry: &Entry) -> Kind {
     match entry.metadata.as_ref().and_then(Metadata::alias_of) {
         Some(alias_of) => (alias_of.logic_ref, alias_of.label_ref),
@@ -40,7 +40,7 @@ fn active_kind(entry: &Entry) -> Kind {
 }
 
 /// The delta of a unit that consumes one unit of `consumed` and creates one unit of `created`. `rcv` is fixed to 1, so
-/// two deltas differ only in the kind points the unit looks up.
+/// two deltas differ only in the kind bases the unit looks up.
 fn delta(consumed: Kind, created: Kind, tree: &[KindTreeEntry]) -> ([u32; 8], [u32; 8]) {
     let nf_key = NullifierKey::from_bytes([1; 32]);
     let nk_commitment = nf_key.commit();
@@ -86,7 +86,7 @@ fn every_token_member_balances_its_active_member() {
                 .map(|entry| KindTreeEntry {
                     logic_ref: entry.logic_ref,
                     label_ref: entry.label_ref,
-                    kind_base: entry.kind_point.clone(),
+                    kind_base: entry.kind_base.clone(),
                 })
                 .collect();
             for entry in &tree.entries {

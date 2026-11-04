@@ -89,20 +89,20 @@ fn solana_environment(environment: Environment) -> SolanaEnvironment {
 fn derived(metadata: Metadata, logic_ref: Digest, label_ref: Digest) -> Result<Entry> {
     Ok(Entry {
         metadata: Some(metadata),
-        kind_point: kind::point(&logic_ref, &label_ref)?,
+        kind_base: kind::point(&logic_ref, &label_ref)?,
         logic_ref,
         label_ref,
     })
 }
 
 /// A member of a token's fungibility domain: one circuit version under one forwarder's label, assigned the
-/// fungibility domain's kind point. `alias_of` names the kind that point is; only the active version under the
+/// fungibility domain's kind base. `alias_of` names the kind that point is; only the active version under the
 /// label of the environment's forwarder carries none, and only that member is active. `metadata` names the token
 /// and forwarder the member belongs to, given the member's version, status and `alias_of`.
 fn member(
     circuit: &CircuitVersion,
     label_ref: Digest,
-    domain_point: &[u8],
+    domain_kind_base: &[u8],
     alias_of: Option<AliasOf>,
     metadata: impl FnOnce(String, Status, Option<AliasOf>) -> Metadata,
 ) -> Entry {
@@ -115,13 +115,13 @@ fn member(
         metadata: Some(metadata(circuit.version.clone(), status, alias_of)),
         logic_ref: circuit.logic_ref,
         label_ref,
-        kind_point: domain_point.to_vec(),
+        kind_base: domain_kind_base.to_vec(),
     }
 }
 
 /// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
 /// circuit version as an alias of the active version under that label, and the active version itself, assigned its
-/// own kind, only if `precompute` is set for the token. Returns the domain's kind point and the kind every alias
+/// own kind, only if `precompute` is set for the token. Returns the domain's kind base and the kind every alias
 /// names, for members added under another label.
 fn domain(
     listed: &[CircuitVersion],
@@ -290,7 +290,7 @@ fn solana_entries(environment: Environment, cluster: SolanaCluster) -> Result<Ve
             circuits::spl_token(),
             circuits::spl_token_active(),
             kind::spl_token_label_ref(&forwarder, &token.mint),
-            token.precompute_kind_point,
+            token.precompute_kind_base,
             |version, status, alias_of| Metadata::SplToken {
                 version,
                 name: token.symbol.clone(),
@@ -310,7 +310,7 @@ fn chain_entries(
     chain: NamedChain,
     versions: &Versions,
 ) -> Result<Vec<Entry>> {
-    // The padding kind is not listed: its resources never convert and need no precomputed kind point, and its logic
+    // The padding kind is not listed: its resources never convert and need no precomputed kind base, and its logic
     // ref would tie every tree to the arm-risc0 release.
     let mut entries = Vec::new();
 
@@ -334,7 +334,7 @@ fn chain_entries(
     // forwarder: every deprecated circuit version under that label and, for a token the list marks for soft migration,
     // the legacy ERC20 forwarder's logic ref under its own label, as aliases. The active version keeps its own kind,
     // which the circuit computes without the tree, so it gets an entry only if the token asks for a precomputed kind
-    // point.
+    // base.
     let supported = tokens::on(chain);
     match anomapay_erc20_forwarder_bindings::addresses::erc20_forwarder_address(
         erc20_environment(environment),
@@ -357,7 +357,7 @@ fn chain_entries(
                     circuits::erc20(),
                     circuits::erc20_active(),
                     kind::erc20_label_ref(&environment_forwarder, &token.address),
-                    token.precompute_kind_point,
+                    token.precompute_kind_base,
                     erc20(environment_forwarder),
                     &mut entries,
                 )?;

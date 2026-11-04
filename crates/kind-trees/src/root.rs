@@ -1,5 +1,5 @@
 //! The kind tree root — the Merkle root that arm-risc0 builds over a tree. Its leaves are
-//! `sha256(logic_ref ‖ label_ref ‖ kind_point)` in `(logic_ref, label_ref)` byte order, padded to a power of two with
+//! `sha256(logic_ref ‖ label_ref ‖ kind_base)` in `(logic_ref, label_ref)` byte order, padded to a power of two with
 //! `sha256("EMPTY")`, and each node hashes its two children. The value `setKindTreeRoot` installs and every
 //! compliance proof that takes a kind from the tree reproduces.
 
@@ -32,10 +32,10 @@ pub fn of(entries: &[Entry]) -> Digest {
 }
 
 fn leaf(entry: &Entry) -> Digest {
-    let mut bytes = Vec::with_capacity(64 + entry.kind_point.len());
+    let mut bytes = Vec::with_capacity(64 + entry.kind_base.len());
     bytes.extend_from_slice(entry.logic_ref.as_bytes());
     bytes.extend_from_slice(entry.label_ref.as_bytes());
-    bytes.extend_from_slice(&entry.kind_point);
+    bytes.extend_from_slice(&entry.kind_base);
     *Impl::hash_bytes(&bytes)
 }
 

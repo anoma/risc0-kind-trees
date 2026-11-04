@@ -1,6 +1,6 @@
 # The hash is owned here and cross-checked
 
-The library computes the kind tree root — the Merkle root over the leaves `sha256(logic_ref ‖ label_ref ‖ kind_point)` — and hash-to-curve locally, so that a consumer that only reads trees does not depend on arm-risc0. The tie to the circuit is a permanent test that loads one tree through arm-risc0's public `init_kind_tree_from_file` path and asserts the local root equals `kind_tree_root()`, and a test that gives every recorded tree to a compliance unit and compares the root the unit commits to.
+The library computes the kind tree root — the Merkle root over the leaves `sha256(logic_ref ‖ label_ref ‖ kind_base)` — and hash-to-curve locally, so that a consumer that only reads trees does not depend on arm-risc0. The tie to the circuit is a permanent test that loads one tree through arm-risc0's public `init_kind_tree_from_file` path and asserts the local root equals `kind_tree_root()`, and a test that gives every recorded tree to a compliance unit and compares the root the unit commits to.
 
 ## Consequences
 

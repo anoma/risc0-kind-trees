@@ -10,12 +10,12 @@ fn entry() -> Entry {
         Digest::from_hex("898f3d23ccad1ec7f07051100973815ce3687870416bc96e823a7aeaa347c367")
             .unwrap();
     let label_ref = Digest::default();
-    let kind_point = kind::point(&logic_ref, &label_ref).unwrap();
+    let kind_base = kind::point(&logic_ref, &label_ref).unwrap();
     Entry {
         metadata: None,
         logic_ref,
         label_ref,
-        kind_point,
+        kind_base,
     }
 }
 
