@@ -9,7 +9,7 @@ fn entry(seed: u8) -> Entry {
     let label_ref = Digest::default();
     Entry {
         metadata: None,
-        kind_point: kind::point(&logic_ref, &label_ref).unwrap(),
+        kind_base: kind::point(&logic_ref, &label_ref).unwrap(),
         logic_ref,
         label_ref,
     }
@@ -27,7 +27,7 @@ fn of_gives_a_one_entry_tree_its_leaf() {
     let leaf = [
         a.logic_ref.as_bytes(),
         a.label_ref.as_bytes(),
-        a.kind_point.as_slice(),
+        a.kind_base.as_slice(),
     ]
     .concat();
     assert_eq!(of(std::slice::from_ref(&a)), *Impl::hash_bytes(&leaf));

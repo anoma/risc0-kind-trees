@@ -1,5 +1,5 @@
-//! One entry of a kind tree. The JSON representation is `anoma-rm-risc0`'s kind tree schema, which names the kind
-//! point `kind_base`, plus a `_metadata` object, so the upstream loader reads a generated tree unchanged.
+//! One entry of a kind tree. The JSON representation is `anoma-rm-risc0`'s kind tree schema plus a `_metadata`
+//! object, so the upstream loader reads a generated tree unchanged.
 
 use crate::circuits::Status;
 use crate::kind;
@@ -8,7 +8,7 @@ use alloy::primitives::Address;
 use risc0_zkvm::Digest;
 use serde::{Deserialize, Serialize};
 
-/// A kind, written as its `(logic_ref, label_ref)`, and the kind point it is assigned.
+/// A kind, written as its `(logic_ref, label_ref)`, and the kind base it is assigned.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     /// Review context for the entry; not covered by the root.
@@ -18,9 +18,9 @@ pub struct Entry {
     pub logic_ref: Digest,
     #[serde(with = "hex_digest")]
     pub label_ref: Digest,
-    /// The assigned kind point, SEC1-encoded and uncompressed (65 bytes).
-    #[serde(rename = "kind_base", with = "hex_bytes")]
-    pub kind_point: Vec<u8>,
+    /// The assigned kind base, SEC1-encoded and uncompressed (65 bytes).
+    #[serde(with = "hex_bytes")]
+    pub kind_base: Vec<u8>,
 }
 
 /// What a kind belongs to: the circuit version behind `logic_ref`, and the deployment behind `label_ref`.
@@ -41,7 +41,7 @@ pub enum Metadata {
         forwarder: Address,
         /// `active` if and only if `alias_of` is absent: the backend creates only that member's resources.
         status: Status,
-        /// The kind this entry takes its kind point from. Absent only on the active version under the label of the
+        /// The kind this entry takes its kind base from. Absent only on the active version under the label of the
         /// environment's forwarder.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         alias_of: Option<AliasOf>,
@@ -69,7 +69,7 @@ pub enum Metadata {
 }
 
 impl Metadata {
-    /// The kind an ERC20 alias takes its kind point from; `None` for every other entry.
+    /// The kind an ERC20 alias takes its kind base from; `None` for every other entry.
     pub fn alias_of(&self) -> Option<&AliasOf> {
         match self {
             Self::Erc20 { alias_of, .. } | Self::SplToken { alias_of, .. } => alias_of.as_ref(),
@@ -78,7 +78,7 @@ impl Metadata {
     }
 }
 
-/// The kind an alias takes its kind point from: the active circuit version under the label of the environment's
+/// The kind an alias takes its kind base from: the active circuit version under the label of the environment's
 /// forwarder. Written into `_metadata`, so an alias says what it is a second name for.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AliasOf {
@@ -98,11 +98,11 @@ impl Entry {
         key
     }
 
-    /// Whether the entry is assigned another kind as its kind point, not its own, so that the tree is the only
+    /// Whether the entry is assigned another kind as its kind base, not its own, so that the tree is the only
     /// place it can come from. Generic call and the active version under the label of the environment's forwarder
     /// are not.
     pub fn is_alias(&self) -> bool {
-        !kind::point(&self.logic_ref, &self.label_ref).is_ok_and(|point| point == self.kind_point)
+        !kind::point(&self.logic_ref, &self.label_ref).is_ok_and(|point| point == self.kind_base)
     }
 }
 
@@ -113,7 +113,7 @@ impl From<&Entry> for anoma_rm_risc0::compliance::KindTreeEntry {
         Self {
             logic_ref: entry.logic_ref,
             label_ref: entry.label_ref,
-            kind_base: entry.kind_point.clone(),
+            kind_base: entry.kind_base.clone(),
         }
     }
 }

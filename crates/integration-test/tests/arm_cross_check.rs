@@ -1,4 +1,4 @@
-//! Pins this repo's trees to `anoma-rm-risc0`. The file loader reads every kind point from the file, so an aliased
+//! Pins this repo's trees to `anoma-rm-risc0`. The file loader reads every kind base from the file, so an aliased
 //! tree is checked like any other, but it fills a process-wide tree that takes one tree per process, so its test
 //! reads one file. A compliance unit takes its tree as an argument, so the conversion test covers every recorded tree.
 
