@@ -11,35 +11,32 @@ homepage.workspace = true
 edition.workspace = true
 
 [features]
-e2e = [
-  "dep:anoma-pa-evm-integration-test",
-  "dep:anoma-pa-testkit",
-  "dep:anomapay-erc20-forwarder-integration-test",
-]
+# Compiles the e2e tests, which fork a chain and prove through the queue.
+e2e = []
 
 [dependencies]
 alloy = { workspace = true }
 alloy-chains = { workspace = true }
-anoma-generic-call-forwarder-bindings = { workspace = true }
 anoma-pa-evm-bindings = { workspace = true }
-anoma-pa-evm-integration-test = { workspace = true, optional = true, features = ["e2e"] }
-anoma-pa-testkit = { workspace = true, optional = true, features = ["fixtures"] }
-anoma-pa-solana-client = { workspace = true, features = ["rpc"] }
-anomapay-spl-token-forwarder-client = { workspace = true, features = ["rpc"] }
 anoma-risc0-kind-trees = { workspace = true, features = ["arm"] }
-anoma-rm-risc0 = { workspace = true }
-anomapay-erc20-forwarder-bindings = { workspace = true }
-anomapay-erc20-forwarder-integration-test = { workspace = true, optional = true }
 anyhow = { workspace = true }
-risc0-zkvm = { workspace = true }
-serde_json = { workspace = true }
 solana-program-pack = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-rpc-client = { workspace = true }
 spl-token-interface = { workspace = true }
-tokio = { workspace = true }
-anomapay_erc20_witness = { workspace = true }
-anomapay-solana-transfer-witness = { workspace = true }
 
 [dev-dependencies]
+anoma-generic-call-forwarder-bindings = { workspace = true }
+anoma-pa-evm-integration-test = { workspace = true, features = ["e2e"] }
+anoma-pa-solana-client = { workspace = true, features = ["rpc"] }
+anoma-pa-testkit = { workspace = true, features = ["fixtures"] }
+anoma-rm-risc0 = { workspace = true }
+anomapay-erc20-forwarder-bindings = { workspace = true }
+anomapay-erc20-forwarder-integration-test = { workspace = true }
+anomapay-solana-transfer-witness = { workspace = true }
+anomapay-spl-token-forwarder-client = { workspace = true, features = ["rpc"] }
+anomapay_erc20_witness = { workspace = true }
+risc0-zkvm = { workspace = true }
 rstest = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
