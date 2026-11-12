@@ -5,7 +5,8 @@
 
 use anoma_pa_evm_bindings::addresses::Environment;
 use anoma_pa_evm_bindings::contract::protocol_adapter;
-use anoma_risc0_kind_trees::{Caip2ChainId, Chain, deployments, tree};
+use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
+use anoma_risc0_kind_trees::{Caip2ChainId, Chain, tree};
 use anoma_risc0_kind_trees_integration_test::{provider, solana_rpc};
 use anyhow::{Context, Result, ensure};
 use risc0_zkvm::Digest;
@@ -19,6 +20,13 @@ fn promotion_target() -> Option<Environment> {
         "staging" => Some(Environment::Staging),
         "main" => Some(Environment::Production),
         _ => None,
+    }
+}
+
+fn solana_environment(environment: Environment) -> SolanaEnvironment {
+    match environment {
+        Environment::Staging => SolanaEnvironment::Staging,
+        Environment::Production => SolanaEnvironment::Production,
     }
 }
 
@@ -53,13 +61,21 @@ async fn the_promoted_environment_stores_the_generated_roots() -> Result<()> {
                 Digest::try_from(stored.as_slice()).context("a root is 32 bytes")?
             }
             Chain::Solana(cluster) => {
-                let adapter = deployments::solana_deployment(cluster)
-                    .with_context(|| format!("no protocol adapter recorded on {chain}"))?
-                    .adapter;
-                solana_rpc(cluster)
-                    .adapter_kind_tree_root(&adapter)
-                    .await?
-                    .with_context(|| format!("{chain}: the adapter {adapter} is not initialized"))?
+                let rpc = solana_rpc(cluster);
+                let adapter = anoma_pa_solana_client::contract::protocol_adapter(
+                    &rpc,
+                    solana_environment(environment),
+                )
+                .await
+                .with_context(|| {
+                    format!("no {environment:?} protocol adapter recorded on {chain}")
+                })?;
+                Digest::from(adapter.get_kind_tree_root().await.with_context(|| {
+                    format!(
+                        "{chain}: the adapter {}'s kind tree root",
+                        adapter.address()
+                    )
+                })?)
             }
         };
         ensure!(

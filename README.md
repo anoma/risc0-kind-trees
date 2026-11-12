@@ -4,11 +4,13 @@
 
 The kind trees the Anoma protocol adapters are committed to — one per chain per environment — and the supported-token list they are built from. The `anoma-risc0-kind-trees` crate computes the roots the way the compliance circuit does, so one source answers what every protocol adapter must store.
 
+The [documentation](./docs/README.md) states what the repository contains and why the protocol needs it.
+
 ## How it fits together
 
-A kind tree maps kinds, written as `(logic_ref, label_ref)`, to kind points. Its root — the Merkle root that arm-risc0 builds over the entries — is what a protocol adapter stores via `setKindTreeRoot` and what every compliance proof that takes a kind from the tree reproduces. A chain's tree is derived: the generic call entry from the recorded forwarder, and the ERC20 entries of each supported token from the recorded ERC20 forwarder. The padding kind has no entry: nothing converts padding resources and their speed does not matter, so the compliance circuit computes their kind point, and the trees do not depend on the arm-risc0 release (ADR-0008). The ERC20 entries of one token form a fungibility domain: every listed circuit version under the forwarder's label and, for a token marked for soft migration on a chain that ran a legacy protocol adapter, the legacy ERC20 forwarder's logic ref under its own label, all assigned the kind of the active version under the label of the environment's forwarder, so their resources are fungible. The aliases are always entries. The active version keeps its own kind, which the circuit computes without the tree, so it has an entry only if the token sets `precompute_kind_point`: the circuit then checks a Merkle path to its kind point instead of computing it by hash to curve. Every entry is machine-checked — an alias against its fungibility domain, every other entry against its own kind — and no kind point is authored.
+A kind tree maps kinds, written as `(logic_ref, label_ref)`, to kind bases. Its root — the Merkle root that arm-risc0 builds over the entries — is what a protocol adapter stores via `setKindTreeRoot` and what every compliance proof that takes a kind from the tree reproduces. A chain's tree is derived: the generic call entry from the recorded forwarder, and the ERC20 entries of each supported token from the recorded ERC20 forwarder. The padding kind has no entry: nothing converts padding resources and their speed does not matter, so the compliance circuit computes their kind base, and the trees do not depend on the arm-risc0 release (ADR-0008). The ERC20 entries of one token form a fungibility domain: every listed circuit version under the forwarder's label and, for a token marked for soft migration on a chain that ran a legacy protocol adapter, the legacy ERC20 forwarder's logic ref under its own label, all assigned the kind of the active version under the label of the environment's forwarder, so their resources are fungible. The aliases are always entries. The active version keeps its own kind, which the circuit computes without the tree, so it has an entry only if the token sets `precompute_kind_base`: the circuit then checks a Merkle path to its kind base instead of computing it by hash to curve. Every entry is machine-checked — an alias against its fungibility domain, every other entry against its own kind — and no kind base is authored.
 
-A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. The forwarder program comes from the deployment record in `anomapay-spl-token-forwarder-client` and the transfer logic ref from `anomapay-solana-resource`, both pinned by git tag. Solana has no generic call forwarder and no V1 forwarder, so its trees have neither entry (ADR-0010).
+A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. An environment gets a Solana tree for each cluster on which the deployment record of `anoma-pa-solana-client` holds its protocol adapter, and the forwarder program comes from the deployment record of `anomapay-spl-token-forwarder-client`. Both clients come from crates.io. `circuit-versions.json` lists the logic ref of each `anomapay-solana-resource` release. Solana has no generic call forwarder and no legacy protocol adapter, so its trees have neither entry (ADR-0010).
 
 ## Layout
 
@@ -27,13 +29,13 @@ docs/adr/                      the decisions behind this layout
 
 Every chain-keyed file — `tokens.json`, `roots.json` — is keyed by the chain's CAIP-2 chain ID, such as `eip155:11155111` for Sepolia, so that a chain of another family than EVM, such as Solana, has a key too. A Solana cluster's reference is the first 32 characters of its base58 genesis hash: devnet is `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`. Each section carries the chain name in a `_comment` the loaders ignore. A generated tree is named for the same ID with the colon replaced by `_`, such as `eip155_11155111.json`, because `cargo package` refuses a colon in a file name (ADR-0009). It is otherwise `anoma-rm-risc0`'s kind tree schema, so `init_kind_tree_from_file` reads one unchanged. The lookups `tree`, `root` and `tokens::on` take a `Caip2ChainId`, an `alloy_chains::NamedChain` or a `SolanaCluster`.
 
-The `solana-deployments` feature exposes the recorded Solana deployment of each cluster (the protocol adapter and SPL token forwarder programs), read from `anoma-pa-solana-client` and `anomapay-spl-token-forwarder-client`. The generator and the integration tests use it; a consumer that only reads trees does not need it.
+The generator and the tests read the deployments as they read the EVM bindings: the program ids from the clients' `addresses` (`protocol_adapter_deployments_map`, `spl_token_forwarder_address`), and the deployed programs through their `contract` instances (`protocol_adapter`, `spl_token_forwarder`). A consumer that only reads trees needs neither client.
 
 The `arm` feature converts an `Entry` into `anoma-rm-risc0`'s `KindTreeEntry`, so a prover loads a recorded tree with `init_kind_tree_from_entries`, without a file.
 
 ## Entries
 
-An entry carries its kind, the kind point it is assigned, and a `_metadata` object naming what the kind belongs to. The root covers `logic_ref`, `label_ref` and `kind_base` only, so `_metadata` is free to carry whatever a reviewer needs and never moves the root. `version` is the version of the circuit crate that owns `logic_ref`, read from the resolved dependency graph, so bumping a pin cannot leave a stale version behind. `type` names the resource the kind belongs to: `ERC20Resource`, `SPLTokenResource`, or `GenericCallResource`. An `SPLTokenResource` entry carries `mint` and `forwarder` as base58 addresses where an ERC20 entry carries `token` and `forwarder`.
+An entry carries its kind, the kind base it is assigned, and a `_metadata` object naming what the kind belongs to. The root covers `logic_ref`, `label_ref` and `kind_base` only, so `_metadata` is free to carry whatever a reviewer needs and never moves the root. `version` is the version of the circuit crate that owns `logic_ref`, read from the resolved dependency graph, so bumping a pin cannot leave a stale version behind. `type` names the resource the kind belongs to: `ERC20Resource`, `SPLTokenResource`, or `GenericCallResource`. An `SPLTokenResource` entry carries `mint` and `forwarder` as base58 addresses where an ERC20 entry carries `token` and `forwarder`.
 
 ```json
 {
@@ -50,9 +52,9 @@ An entry carries its kind, the kind point it is assigned, and a `_metadata` obje
 }
 ```
 
-That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, all carrying the same `kind_base`. The kind point is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_point`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind point instead of computing it.
+That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, all carrying the same `kind_base`. The kind base is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_base`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind base instead of computing it.
 
-An alias also says what it is a second name for. Its `alias_of` names the kind it takes its kind point from, so a reviewer reads it without recomputing anything, and its `status` is `deprecated`: a member is `active` if and only if it has no `alias_of`. When version 3.0.0 becomes active, 2.0.0 becomes deprecated, every kind point moves to 3.0.0's kind, and the WETH entry for 2.0.0 becomes this:
+An alias also says what it is a second name for. Its `alias_of` names the kind it takes its kind base from, so a reviewer reads it without recomputing anything, and its `status` is `deprecated`: a member is `active` if and only if it has no `alias_of`. When version 3.0.0 becomes active, 2.0.0 becomes deprecated, every kind base moves to 3.0.0's kind, and the WETH entry for 2.0.0 becomes this:
 
 ```json
 {
@@ -90,11 +92,11 @@ The generator then writes one more member per token on every chain that has the 
 
 ## Workflows
 
-Adding a token, listing a circuit version and recording a V1 forwarder all change a chain's entries, and therefore change its root. A transaction built against the new tree verifies only after that chain's protocol adapter stores the new root, so all of them end in *Update the deployed roots*.
+Adding a token, listing a circuit version and recording a legacy ERC20 forwarder all change a chain's entries, and therefore change its root. A transaction built against the new tree verifies only after that chain's protocol adapter stores the new root, so all of them end in *Update the deployed roots*.
 
 ### Add a token
 
-1. Add the token to [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), under the CAIP-2 chain ID of the chain it lives on. An ERC20 token records `address` and `soft_migrate_from_legacy_forwarder`; an SPL token records `mint` (base58) and has no such flag. Every token records `precompute_kind_point`: `true` gives its active kind an entry, so proofs of its resources check a Merkle path instead of computing the kind point by hash to curve. Each time the entry count passes a power of two, the tree gains a level, and every Merkle path a proof checks gets one more hash. Set it for the tokens that most transactions carry.
+1. Add the token to [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), under the CAIP-2 chain ID of the chain it lives on. An ERC20 token records `address` and `soft_migrate_from_legacy_forwarder`; an SPL token records `mint` (base58) and has no such flag. Every token records `precompute_kind_base`: `true` gives its active kind an entry, so proofs of its resources check a Merkle path instead of computing the kind base by hash to curve. Each time the entry count passes a power of two, the tree gains a level, and every Merkle path a proof checks gets one more hash. Set it for the tokens that most transactions carry.
 2. Run `just generate`.
 3. Commit the edited file together with the regenerated trees.
 
@@ -102,7 +104,7 @@ The token validation test runs on every pull request and push. It calls an ERC20
 
 ### Add a circuit version
 
-Listing a version makes its resources fungible with every other listed version's, behind the same forwarder, one for one. Nothing passes from one version to another: both kinds are assigned one kind point. Exactly one version is active — under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources — and it must be the highest listed; every other version is deprecated, an alias of the active one, which the backend only consumes. Making a version active moves every ERC20 kind point on every chain to its kind. Review the change as carefully as a permission to create new tokens.
+Listing a version makes its resources fungible with every other listed version's, behind the same forwarder, one for one. Nothing passes from one version to another: both kinds are assigned one kind base. Exactly one version is active — under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources — and it must be the highest listed; every other version is deprecated, an alias of the active one, which the backend only consumes. Making a version active moves every ERC20 kind base on every chain to its kind. Review the change as carefully as a permission to create new tokens.
 
 The generator pins the crate of the active version and the crate of the legacy circuit, and checks that the logic ref each compiles to is listed. Any other deprecated version stays listed and is checked against nothing.
 
@@ -134,7 +136,7 @@ A member under the legacy forwarder's label lets a legacy-forwarder resource unw
 
 1. Merge into `next`.
 2. Read each chain's root from `crates/kind-trees/data/generated/<environment>/roots.json`.
-3. Install it with the protocol adapter repo's `contracts-*-kind-table-*` recipes, which call `setKindTreeRoot`. On Solana, the adapter's owner calls `set_kind_tree_root`, through the Solana protocol adapter repo's `dev.sh set-kind-table --cluster <cluster>` with `PA_KIND_TREE_ROOT` set.
+3. Install it with the protocol adapter repo's `contracts-*-kind-tree-root-*` recipes, which call `setKindTreeRoot`. On Solana, the adapter's owner calls `set_kind_tree_root`, through the Solana protocol adapter repo's `dev.sh set-kind-tree-root --cluster <cluster>` with `PA_KIND_TREE_ROOT` set.
 4. Open the promotion pull request into `staging` or `main`. It passes only when every protocol adapter of that environment already stores the root this source generates. The soft-migration gate also proves, on a fork of Sepolia, that a legacy-forwarder resource converts and leaves through the environment's forwarder, so the environment's forwarder must already hold the tokens moved from the legacy forwarder.
 
 ## Verifying

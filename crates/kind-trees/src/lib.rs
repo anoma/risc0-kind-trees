@@ -1,7 +1,5 @@
 pub mod chain;
 pub mod circuits;
-#[cfg(feature = "solana-deployments")]
-pub mod deployments;
 pub mod entry;
 pub mod error;
 pub mod kind;

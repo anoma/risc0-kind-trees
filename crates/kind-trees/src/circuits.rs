@@ -1,7 +1,7 @@
 //! The ERC20 circuit versions, read from `data/circuit-versions.json`. Every listed version is a member of every
 //! ERC20 fungibility domain, so its resources are fungible with every other listed version's behind the same
 //! forwarder. Exactly one version is active: under the label of the environment's forwarder it keeps its own kind,
-//! which is the kind point of every ERC20 fungibility domain, and the backend creates its resources. Every other
+//! which is the kind base of every ERC20 fungibility domain, and the backend creates its resources. Every other
 //! version is deprecated: an alias of the active one, which the backend consumes and converts. A deprecated
 //! version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it
 //! stays, even when the protocol adapter denies its logic ref, with entries that nothing can use.
@@ -57,7 +57,7 @@ pub fn spl_token() -> &'static [CircuitVersion] {
     &FILE.spl_token
 }
 
-/// The active ERC20 circuit version. Its kind under the label of the environment's forwarder is the kind point of
+/// The active ERC20 circuit version. Its kind under the label of the environment's forwarder is the kind base of
 /// every ERC20 fungibility domain. `check_erc20` says why there is exactly one.
 pub fn erc20_active() -> &'static CircuitVersion {
     active(erc20(), "ERC20")

@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/kind-trees", "crates/integration-test"]
 
 [workspace.package]
-version = "1.0.0-rc.8"
+version = "1.0.0-rc.9"
 keywords = ["anoma", "kind-tree", "protocol-adapter"]
 authors = ["Anoma Foundation"]
 license = "MIT"
@@ -14,25 +14,25 @@ edition = "2024"
 [workspace.dependencies]
 alloy = { version = "2.5.0", features = ["full"] }
 alloy-chains = "0.2.39"
-anoma-generic-call-forwarder-bindings = "2.0.0-rc.8"
+anoma-generic-call-forwarder-bindings = "2.0.0-rc.9"
 # The circuit crates are pinned exactly: another build has another logic ref, and so another kind.
-anoma-generic-call-library = "=2.0.0-rc.4"
-anoma-pa-evm-bindings = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.20" }
-anoma-pa-testkit = "1.0.0-rc.6"
-anoma-rm-risc0 = { version = "2.0.0-rc.8.1", default-features = false, features = [
+anoma-generic-call-library = "=2.0.0-rc.5"
+anoma-pa-evm-bindings = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.22" }
+anoma-pa-solana-client = "0.12.1"
+anoma-pa-testkit = "1.0.0-rc.9"
+anoma-rm-risc0 = { version = "2.0.0-rc.9", default-features = false, features = [
   "transaction",
 ] }
-anomapay-erc20-forwarder-bindings = "3.0.0-rc.19"
-anomapay_erc20_library = "=2.0.0-rc.4"
-anomapay_erc20_witness = "=2.0.0-rc.4"
+anomapay-erc20-forwarder-bindings = "3.0.0-rc.20"
+anomapay-spl-token-forwarder-client = "0.11.1"
+anomapay_erc20_library = "=2.0.0-rc.5"
+anomapay_erc20_witness = "=2.0.0-rc.5"
 anyhow = "1.0.104"
 bs58 = "0.5.1"
 dotenvy = "0.15.7"
 hex = "0.4.3"
 k256 = { version = "0.13.3", features = ["arithmetic", "hash2curve"] }
-# The legacy circuit, which the legacy forwarders accept. Rev 4b9562e pairs it with a host crate for arm-risc0 2.0.0-rc.8.1 and pins its witness crate.
-legacy-anomapay-erc20-library = { package = "transfer_library", git = "https://github.com/anoma/anomapay-erc20-resource", rev = "4b9562e5e918d4a6182872d50f183eb7fe9caf37" }
-risc0-zkvm = { version = "3.0.6", default-features = false }
+risc0-zkvm = { version = "3.1.0", default-features = false }
 rstest = "0.28.0"
 semver = "1.0.27"
 serde = { version = "1.0.229", features = ["derive"] }
@@ -41,17 +41,16 @@ thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros"] }
 
 # The e2e test crates of the protocol adapter and the ERC20 forwarder, pinned by git tag, because they are not on crates.io.
-anoma-pa-evm-integration-test = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.20" }
-anomapay-erc20-forwarder-integration-test = { git = "https://github.com/anoma/anomapay-erc20-forwarder", tag = "bindings/v3.0.0-rc.19" }
+anoma-pa-evm-integration-test = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.22" }
+anomapay-erc20-forwarder-integration-test = { git = "https://github.com/anoma/anomapay-erc20-forwarder", tag = "bindings/v3.0.0-rc.20" }
 
-# The Solana deployment records, pinned by git commit.
-anoma-pa-solana-client = { git = "https://github.com/anoma/anoma-pa-solana-client", rev = "7ed4f3ee29ec4f8840fd20599e28f2e50a79fb37" }
-anomapay-spl-token-forwarder-client = { git = "https://github.com/anoma/anomapay-spl-token-forwarder", rev = "e122e5106298bad753af89286705424b851fbba2" }
-base64 = "0.22.1"
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
-solana-cluster-type = "2.2.1"
+# The AnomaPay Solana resource's witness crate, pinned by git tag: it is not published (`transfer_witness` on crates.io is
+# the ERC20 resource's).
+anomapay-solana-transfer-witness = { package = "transfer_witness", git = "https://github.com/anoma/anomapay-solana-resource", tag = "v2.0.0-rc.12" }
+solana-cluster-type = "3"
 solana-program-pack = "3"
 solana-pubkey = "3"
+solana-rpc-client = "4"
 spl-token-interface = "3"
 
 anoma-risc0-kind-trees = { path = "crates/kind-trees" }

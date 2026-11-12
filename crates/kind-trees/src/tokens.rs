@@ -22,9 +22,9 @@ pub struct Token {
     /// through the environment's forwarder. Every token states it; a token set to `false` keeps its legacy-forwarder
     /// resources where they are.
     pub soft_migrate_from_legacy_forwarder: bool,
-    /// Whether the tree lists the token's active kind with its own kind point, so the compliance circuit reads the
+    /// Whether the tree lists the token's active kind with its own kind base, so the compliance circuit reads the
     /// point instead of computing it by hash to curve. Every token states it; its aliases are listed either way.
-    pub precompute_kind_point: bool,
+    pub precompute_kind_base: bool,
 }
 
 /// The identity of a supported SPL token: its mint, and the name and symbol review knows it by. A mint reports
@@ -35,9 +35,9 @@ pub struct SplToken {
     pub name: String,
     pub decimals: u8,
     pub mint: SolanaAddress,
-    /// Whether the tree lists the mint's active kind with its own kind point, so the compliance circuit reads the
+    /// Whether the tree lists the mint's active kind with its own kind base, so the compliance circuit reads the
     /// point instead of computing it by hash to curve. Every mint states it; its aliases are listed either way.
-    pub precompute_kind_point: bool,
+    pub precompute_kind_base: bool,
 }
 
 /// One chain's authored section. The `_comment` naming the chain is review context and is not deserialized.

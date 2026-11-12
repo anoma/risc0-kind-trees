@@ -1,15 +1,27 @@
 use alloy_chains::NamedChain;
 use anoma_risc0_kind_trees::chain::{Chain, SolanaCluster};
 use anoma_risc0_kind_trees::circuits::{self, CircuitVersion, Status};
-use anoma_risc0_kind_trees::deployments::solana_deployment;
 use anoma_risc0_kind_trees::entry::Metadata;
 use anoma_risc0_kind_trees::kind;
 use anoma_risc0_kind_trees::tree::*;
-use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error};
+use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error, SolanaAddress};
 use anomapay_erc20_forwarder_bindings::addresses::{Environment, erc20_forwarder_address};
+use anomapay_spl_token_forwarder_client::addresses::{
+    Environment as SolanaEnvironment, spl_token_forwarder_address,
+};
 use risc0_zkvm::Digest;
 
-/// The alias rules of a fungibility domain, checked on one member: it is assigned the domain's kind point
+/// The SPL token forwarder the environment records on the cluster, from the forwarder client's deployment record.
+fn spl_forwarder(environment: Environment, cluster: SolanaCluster) -> Option<SolanaAddress> {
+    let environment = match environment {
+        Environment::Staging => SolanaEnvironment::Staging,
+        Environment::Production => SolanaEnvironment::Production,
+    };
+    spl_token_forwarder_address(environment, &cluster.into())
+        .map(|forwarder| SolanaAddress::new(forwarder.to_bytes()))
+}
+
+/// The alias rules of a fungibility domain, checked on one member: it is assigned the domain's kind base
 /// (the kind of the active version under the label of the environment's forwarder), its version is in `listed`, it
 /// is active if and only if it has no `alias_of`, and an `alias_of` names the active version under that label.
 fn check_member(
@@ -22,8 +34,8 @@ fn check_member(
 ) {
     let domain = kind::point(&active.logic_ref, &active_label).expect("a kind derives");
     assert_eq!(
-        entry.kind_point, domain,
-        "{context}: a member is not assigned its fungibility domain's kind point"
+        entry.kind_base, domain,
+        "{context}: a member is not assigned its fungibility domain's kind base"
     );
     assert!(
         listed
@@ -63,13 +75,13 @@ fn check_member(
     }
 }
 
-/// No kind point is authored. A token entry is assigned its fungibility domain's kind point — the kind of the
+/// No kind base is authored. A token entry is assigned its fungibility domain's kind base — the kind of the
 /// active version under the label of the environment's forwarder on the chain — and every alias says so in
 /// `alias_of`. Every other entry is assigned its own kind. This reads the embedded trees only; the environment's
-/// forwarder comes from the deployment records (the ERC20 forwarder bindings, and the Solana deployment record),
+/// forwarder comes from the deployment records (the ERC20 forwarder bindings and the SPL token forwarder client),
 /// never from the entries themselves, so a tree built for the wrong forwarder fails here.
 #[test]
-fn token_entries_share_their_fungibility_domains_kind_point() {
+fn token_entries_share_their_fungibility_domains_kind_base() {
     for (module, environment, trees) in [
         ("staging", Environment::Staging, staging::trees()),
         ("production", Environment::Production, production::trees()),
@@ -79,10 +91,7 @@ fn token_entries_share_their_fungibility_domains_kind_point() {
             let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
             let (erc20_forwarder, spl_forwarder) = match known {
                 Chain::Evm(named) => (erc20_forwarder_address(environment, &named), None),
-                Chain::Solana(cluster) => (
-                    None,
-                    solana_deployment(cluster).map(|deployment| deployment.forwarder),
-                ),
+                Chain::Solana(cluster) => (None, spl_forwarder(environment, cluster)),
             };
             for entry in &tree.entries {
                 let (listed, active, active_label, status) = match &entry.metadata {
@@ -100,7 +109,7 @@ fn token_entries_share_their_fungibility_domains_kind_point() {
                     Some(Metadata::SplToken { mint, status, .. }) => {
                         let forwarder = spl_forwarder.unwrap_or_else(|| {
                             panic!(
-                                "{context}: an SPL token entry but no Solana deployment recorded"
+                                "{context}: an SPL token entry but no SPL token forwarder recorded"
                             )
                         });
                         (
@@ -124,10 +133,10 @@ fn token_entries_share_their_fungibility_domains_kind_point() {
     }
 }
 
-/// A token's active kind has an entry if and only if the token asks for a precomputed kind point. Without the entry, the
-/// circuit computes the same kind point by hash to curve.
+/// A token's active kind has an entry if and only if the token asks for a precomputed kind base. Without the entry, the
+/// circuit computes the same kind base by hash to curve.
 #[test]
-fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_point() {
+fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_base() {
     let mut checked = 0;
     for (module, environment, trees) in [
         ("staging", Environment::Staging, staging::trees()),
@@ -136,7 +145,7 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_poi
         for (chain, tree) in trees {
             let context = format!("{module} {chain}");
             let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
-            // (symbol, active kind, whether the token asks for a precomputed kind point)
+            // (symbol, active kind, whether the token asks for a precomputed kind base)
             let tokens: Vec<(&str, (Digest, Digest), bool)> = match known {
                 Chain::Evm(named) => match erc20_forwarder_address(environment, &named) {
                     Some(forwarder) => anoma_risc0_kind_trees::tokens::on(named)
@@ -144,19 +153,18 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_poi
                         .map(|token| {
                             let label_ref = kind::erc20_label_ref(&forwarder, &token.address);
                             let active = (circuits::erc20_active().logic_ref, label_ref);
-                            (token.symbol.as_str(), active, token.precompute_kind_point)
+                            (token.symbol.as_str(), active, token.precompute_kind_base)
                         })
                         .collect(),
                     None => Vec::new(),
                 },
-                Chain::Solana(cluster) => match solana_deployment(cluster) {
-                    Some(deployment) => anoma_risc0_kind_trees::tokens::spl_on(cluster)
+                Chain::Solana(cluster) => match spl_forwarder(environment, cluster) {
+                    Some(forwarder) => anoma_risc0_kind_trees::tokens::spl_on(cluster)
                         .iter()
                         .map(|token| {
-                            let label_ref =
-                                kind::spl_token_label_ref(&deployment.forwarder, &token.mint);
+                            let label_ref = kind::spl_token_label_ref(&forwarder, &token.mint);
                             let active = (circuits::spl_token_active().logic_ref, label_ref);
-                            (token.symbol.as_str(), active, token.precompute_kind_point)
+                            (token.symbol.as_str(), active, token.precompute_kind_base)
                         })
                         .collect(),
                     None => Vec::new(),
@@ -169,7 +177,7 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_poi
                     .any(|entry| (entry.logic_ref, entry.label_ref) == active);
                 assert_eq!(
                     listed, asks,
-                    "{context}: {symbol} has an active entry if and only if it asks for a precomputed kind point"
+                    "{context}: {symbol} has an active entry if and only if it asks for a precomputed kind base"
                 );
                 checked += 1;
             }
@@ -224,7 +232,7 @@ fn staging_records_the_solana_devnet_tree() {
         );
         assert_eq!(
             member.label_ref.to_string(),
-            "6b883f562948fd8812d0c3c26559b237088850f957283cb777c59130da1f7c17",
+            "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
             "the {} member's label is sha256(devnet forwarder ‖ test mint)",
             circuit.version
         );

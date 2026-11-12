@@ -12,7 +12,7 @@ Changes accumulate on `next` and are promoted through `staging` to `main`, match
 ## Updating the staging environment
 
 1. Read each chain's root from `data/generated/staging/roots.json`.
-2. Install it with the protocol adapter repo, per chain: `just contracts-execute-staging-kind-table-update <deployer> <proxy> <root> <chain>`.
+2. Install it with the protocol adapter repo, per chain: `just contracts-execute-staging-kind-tree-root-update <deployer> <proxy> <root> <chain>`.
 3. Update **every** chain of the environment before opening the promotion pull request — one chain left behind blocks the promotion for all of them.
 4. Open the promotion pull request `next` → `staging`. It is green once every staging protocol adapter stores the generated root.
 
@@ -20,7 +20,7 @@ Changes accumulate on `next` and are promoted through `staging` to `main`, match
 
 1. Promote `staging` → `main` only after the staging cycle completed.
 2. Read each chain's root from `data/generated/production/roots.json`.
-3. Propose it to the owning Safe with the protocol adapter repo, per chain: `just contracts-propose-production-kind-table-update <deployer> <proxy> <proposer> <root> <chain>`; the Safe owners confirm and execute in the Safe app.
+3. Propose it to the owning Safe with the protocol adapter repo, per chain: `just contracts-propose-production-kind-tree-root-update <deployer> <proxy> <proposer> <root> <chain>`; the Safe owners confirm and execute in the Safe app.
 4. The promotion pull request `staging` → `main` is green once every production protocol adapter stores the generated root.
 
 ## Publishing the crate

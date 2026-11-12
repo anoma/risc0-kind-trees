@@ -1,7 +1,7 @@
-//! Every ERC20 member of a generated tree balances the active member of its fungibility domain in a compliance unit,
-//! whether the tree lists the active member or the circuit computes its kind point by hash to curve.
-//! The resources take their labels from the transfer circuit's derivation, and the compliance constraints take their
-//! kinds from the tree, so the generated keys and kind points are checked against both circuits. It needs no chain.
+//! Every ERC20 and SPL token member of a generated tree balances the active member of its fungibility domain in a
+//! compliance unit, whether the tree lists the active member or the circuit computes its kind base by hash to curve.
+//! The resources take their labels from their transfer circuit's derivation, and the compliance constraints take their
+//! kinds from the tree, so the generated keys and kind bases are checked against both circuits. It needs no chain.
 
 use anoma_risc0_kind_trees::tree::{production, staging};
 use anoma_risc0_kind_trees::{Entry, Metadata};
@@ -10,26 +10,28 @@ use anoma_rm_risc0::compliance::{self, KindTreeEntry};
 use anoma_rm_risc0::kind_tree::KindTree;
 use anoma_rm_risc0::nullifier_key::NullifierKey;
 use anoma_rm_risc0::resource::{Resource, ResourceWitness, ResourceWitnessConsumed};
-use anomapay_erc20_witness::calculate_label_ref;
 
 /// A resource kind, written as its `(logic_ref, label_ref)`.
 type Kind = (Digest, Digest);
 
-/// The kind of this member's resources: its logic, and the label the transfer circuit derives for its token.
+/// The kind of this member's resources: its logic, and the label its transfer circuit derives for its token.
 fn resource_kind(entry: &Entry) -> Option<Kind> {
-    let Some(Metadata::Erc20 {
-        token, forwarder, ..
-    }) = &entry.metadata
-    else {
-        return None;
+    let label_ref = match entry.metadata.as_ref()? {
+        Metadata::Erc20 {
+            token, forwarder, ..
+        } => anomapay_erc20_witness::calculate_label_ref(forwarder.as_slice(), token.as_slice()),
+        Metadata::SplToken {
+            mint, forwarder, ..
+        } => anomapay_solana_transfer_witness::calculate_label_ref(
+            forwarder.as_bytes(),
+            mint.as_bytes(),
+        ),
+        Metadata::GenericCall { .. } => return None,
     };
-    Some((
-        entry.logic_ref,
-        calculate_label_ref(forwarder.as_slice(), token.as_slice()),
-    ))
+    Some((entry.logic_ref, label_ref))
 }
 
-/// The kind this entry takes its kind point from: the kind its `alias_of` names, or its own.
+/// The kind this entry takes its kind base from: the kind its `alias_of` names, or its own.
 fn active_kind(entry: &Entry) -> Kind {
     match entry.metadata.as_ref().and_then(Metadata::alias_of) {
         Some(alias_of) => (alias_of.logic_ref, alias_of.label_ref),
@@ -38,7 +40,7 @@ fn active_kind(entry: &Entry) -> Kind {
 }
 
 /// The delta of a unit that consumes one unit of `consumed` and creates one unit of `created`. `rcv` is fixed to 1, so
-/// two deltas differ only in the kind points the unit looks up.
+/// two deltas differ only in the kind bases the unit looks up.
 fn delta(consumed: Kind, created: Kind, tree: &[KindTreeEntry]) -> ([u32; 8], [u32; 8]) {
     let nf_key = NullifierKey::from_bytes([1; 32]);
     let nk_commitment = nf_key.commit();
@@ -71,7 +73,7 @@ fn delta(consumed: Kind, created: Kind, tree: &[KindTreeEntry]) -> ([u32; 8], [u
 }
 
 #[test]
-fn every_erc20_member_balances_its_active_member() {
+fn every_token_member_balances_its_active_member() {
     let mut aliases = 0;
     for (module, trees) in [
         ("staging", staging::trees()),
@@ -84,7 +86,7 @@ fn every_erc20_member_balances_its_active_member() {
                 .map(|entry| KindTreeEntry {
                     logic_ref: entry.logic_ref,
                     label_ref: entry.label_ref,
-                    kind_base: entry.kind_point.clone(),
+                    kind_base: entry.kind_base.clone(),
                 })
                 .collect();
             for entry in &tree.entries {

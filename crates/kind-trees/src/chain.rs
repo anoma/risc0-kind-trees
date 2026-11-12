@@ -160,11 +160,7 @@ impl SolanaCluster {
 
     /// The reference of the cluster's CAIP-2 chain ID: the first 32 characters of the cluster's genesis hash.
     pub fn reference(self) -> String {
-        let cluster_type = match self {
-            Self::MainnetBeta => ClusterType::MainnetBeta,
-            Self::Devnet => ClusterType::Devnet,
-        };
-        let genesis_hash = cluster_type
+        let genesis_hash = ClusterType::from(self)
             .get_genesis_hash()
             .expect("the Solana SDK records the genesis hash of every public cluster")
             .to_string();
@@ -176,6 +172,30 @@ impl SolanaCluster {
         match self {
             Self::MainnetBeta => "solana-mainnet-beta",
             Self::Devnet => "solana-devnet",
+        }
+    }
+}
+
+impl From<SolanaCluster> for ClusterType {
+    fn from(cluster: SolanaCluster) -> Self {
+        match cluster {
+            SolanaCluster::MainnetBeta => Self::MainnetBeta,
+            SolanaCluster::Devnet => Self::Devnet,
+        }
+    }
+}
+
+/// The deployment records name a cluster by its `ClusterType`; one this crate does not name is an error.
+impl TryFrom<ClusterType> for SolanaCluster {
+    type Error = Error;
+
+    fn try_from(cluster: ClusterType) -> Result<Self> {
+        match cluster {
+            ClusterType::MainnetBeta => Ok(Self::MainnetBeta),
+            ClusterType::Devnet => Ok(Self::Devnet),
+            ClusterType::Testnet | ClusterType::Development => {
+                Err(Error::UnknownSolanaCluster(cluster))
+            }
         }
     }
 }

@@ -6,9 +6,10 @@ use alloy::primitives::Address;
 use alloy_chains::NamedChain;
 use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCallEnvironment;
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
+use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
     AliasOf, Caip2ChainId, Chain, CircuitVersion, Entry, Metadata, SolanaAddress, SolanaCluster,
-    Status, circuits, deployments, kind, root, tokens,
+    Status, circuits, kind, root, tokens,
 };
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
 use anyhow::{Context, Result, bail, ensure};
@@ -76,24 +77,32 @@ fn generic_call_environment(environment: Environment) -> GenericCallEnvironment 
     }
 }
 
+/// The Solana programs' clients share one environment, the adapter client's.
+fn solana_environment(environment: Environment) -> SolanaEnvironment {
+    match environment {
+        Environment::Staging => SolanaEnvironment::Staging,
+        Environment::Production => SolanaEnvironment::Production,
+    }
+}
+
 /// An entry outside every fungibility domain: it is assigned its own kind.
 fn derived(metadata: Metadata, logic_ref: Digest, label_ref: Digest) -> Result<Entry> {
     Ok(Entry {
         metadata: Some(metadata),
-        kind_point: kind::point(&logic_ref, &label_ref)?,
+        kind_base: kind::point(&logic_ref, &label_ref)?,
         logic_ref,
         label_ref,
     })
 }
 
 /// A member of a token's fungibility domain: one circuit version under one forwarder's label, assigned the
-/// fungibility domain's kind point. `alias_of` names the kind that point is; only the active version under the
+/// fungibility domain's kind base. `alias_of` names the kind that point is; only the active version under the
 /// label of the environment's forwarder carries none, and only that member is active. `metadata` names the token
 /// and forwarder the member belongs to, given the member's version, status and `alias_of`.
 fn member(
     circuit: &CircuitVersion,
     label_ref: Digest,
-    domain_point: &[u8],
+    domain_kind_base: &[u8],
     alias_of: Option<AliasOf>,
     metadata: impl FnOnce(String, Status, Option<AliasOf>) -> Metadata,
 ) -> Entry {
@@ -106,13 +115,13 @@ fn member(
         metadata: Some(metadata(circuit.version.clone(), status, alias_of)),
         logic_ref: circuit.logic_ref,
         label_ref,
-        kind_point: domain_point.to_vec(),
+        kind_base: domain_kind_base.to_vec(),
     }
 }
 
 /// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
 /// circuit version as an alias of the active version under that label, and the active version itself, assigned its
-/// own kind, only if `precompute` is set for the token. Returns the domain's kind point and the kind every alias
+/// own kind, only if `precompute` is set for the token. Returns the domain's kind base and the kind every alias
 /// names, for members added under another label.
 fn domain(
     listed: &[CircuitVersion],
@@ -150,9 +159,8 @@ fn sorted(mut entries: Vec<Entry>, chain: &Chain) -> Result<Vec<Entry>> {
     Ok(entries)
 }
 
-/// The circuit version behind the generic-call logic ref, and those of the pinned ERC20 crates.
+/// The circuit version behind the generic-call logic ref, and that of the pinned ERC20 crate.
 struct Versions {
-    legacy_anomapay_erc20: String,
     anomapay_erc20: String,
     generic_call: String,
 }
@@ -211,26 +219,19 @@ fn versions() -> Result<Versions> {
     };
 
     Ok(Versions {
-        legacy_anomapay_erc20: version_of("legacy_anomapay_erc20_library")?,
         anomapay_erc20: version_of("anomapay_erc20_library")?,
         generic_call: version_of("anoma_generic_call_library")?,
     })
 }
 
-/// The ERC20 circuit crates this generator pins, the legacy circuit's and the active version's, each with the logic
-/// ref it compiles to. A release replaces the active pin. A version whose crate is not pinned stays listed in
-/// `circuit-versions.json` and is checked against nothing.
+/// The ERC20 circuit crate this generator pins, the active version's, with the logic ref it compiles to. A release
+/// replaces the pin. Another listed version is checked only by a deployment record that names its logic ref, as the
+/// legacy forwarders' records name the legacy version's.
 fn pinned_erc20_circuits(versions: &Versions) -> Vec<(String, Digest)> {
-    vec![
-        (
-            versions.legacy_anomapay_erc20.clone(),
-            digest(legacy_anomapay_erc20_library::TOKEN_TRANSFER_ID.as_bytes()),
-        ),
-        (
-            versions.anomapay_erc20.clone(),
-            digest(anomapay_erc20_library::ANOMAPAY_ERC20_CIRCUIT_ID.as_bytes()),
-        ),
-    ]
+    vec![(
+        versions.anomapay_erc20.clone(),
+        digest(anomapay_erc20_library::ANOMAPAY_ERC20_CIRCUIT_ID.as_bytes()),
+    )]
 }
 
 /// Each list must pass its own checks, and every pinned circuit crate must be listed with the logic ref it
@@ -262,25 +263,34 @@ fn check_circuit_versions(versions: &Versions) -> Result<()> {
     Ok(())
 }
 
-/// The Solana cluster an environment's tree is built for: devnet is staging, mainnet-beta is production.
-fn solana_cluster(environment: Environment) -> SolanaCluster {
-    match environment {
-        Environment::Staging => SolanaCluster::Devnet,
-        Environment::Production => SolanaCluster::MainnetBeta,
-    }
-}
-
-/// A Solana cluster's entries: one fungibility domain per supported mint under the forwarder program's label.
-/// As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder, so no generic call
-/// entry.
-fn solana_entries(cluster: SolanaCluster, forwarder: SolanaAddress) -> Result<Vec<Entry>> {
+/// A Solana cluster's entries: one fungibility domain per supported mint under the label of the environment's SPL
+/// token forwarder program. As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder, so
+/// no generic call entry.
+fn solana_entries(environment: Environment, cluster: SolanaCluster) -> Result<Vec<Entry>> {
     let mut entries = Vec::new();
-    for token in tokens::spl_on(cluster) {
+    let supported = tokens::spl_on(cluster);
+    let Some(forwarder) =
+        anomapay_spl_token_forwarder_client::addresses::spl_token_forwarder_address(
+            solana_environment(environment),
+            &cluster.into(),
+        )
+    else {
+        if !supported.is_empty() {
+            eprintln!(
+                "{}: {} supported mints but no SPL token forwarder recorded - no token kinds emitted",
+                cluster.name(),
+                supported.len()
+            );
+        }
+        return Ok(entries);
+    };
+    let forwarder = SolanaAddress::new(forwarder.to_bytes());
+    for token in supported {
         domain(
             circuits::spl_token(),
             circuits::spl_token_active(),
             kind::spl_token_label_ref(&forwarder, &token.mint),
-            token.precompute_kind_point,
+            token.precompute_kind_base,
             |version, status, alias_of| Metadata::SplToken {
                 version,
                 name: token.symbol.clone(),
@@ -300,7 +310,7 @@ fn chain_entries(
     chain: NamedChain,
     versions: &Versions,
 ) -> Result<Vec<Entry>> {
-    // The padding kind is not listed: its resources never convert and need no precomputed kind point, and its logic
+    // The padding kind is not listed: its resources never convert and need no precomputed kind base, and its logic
     // ref would tie every tree to the arm-risc0 release.
     let mut entries = Vec::new();
 
@@ -324,7 +334,7 @@ fn chain_entries(
     // forwarder: every deprecated circuit version under that label and, for a token the list marks for soft migration,
     // the legacy ERC20 forwarder's logic ref under its own label, as aliases. The active version keeps its own kind,
     // which the circuit computes without the tree, so it gets an entry only if the token asks for a precomputed kind
-    // point.
+    // base.
     let supported = tokens::on(chain);
     match anomapay_erc20_forwarder_bindings::addresses::erc20_forwarder_address(
         erc20_environment(environment),
@@ -347,7 +357,7 @@ fn chain_entries(
                     circuits::erc20(),
                     circuits::erc20_active(),
                     kind::erc20_label_ref(&environment_forwarder, &token.address),
-                    token.precompute_kind_point,
+                    token.precompute_kind_base,
                     erc20(environment_forwarder),
                     &mut entries,
                 )?;
@@ -406,18 +416,18 @@ fn main() -> Result<()> {
                 chain_entries(environment, chain, &versions)?,
             ));
         }
-        let cluster = solana_cluster(environment);
-        match deployments::solana_deployment(cluster) {
-            Some(deployment) => trees.push((
+        let mut clusters = anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
+            solana_environment(environment),
+        )
+        .into_iter()
+        .map(|(cluster, _)| SolanaCluster::try_from(cluster))
+        .collect::<anoma_risc0_kind_trees::Result<Vec<_>>>()?;
+        clusters.sort();
+        for cluster in clusters {
+            trees.push((
                 Chain::Solana(cluster),
-                solana_entries(cluster, deployment.forwarder)?,
-            )),
-            None if tokens::spl_on(cluster).is_empty() => {}
-            None => eprintln!(
-                "{}: {} supported mints but no deployment recorded - no token kinds emitted",
-                cluster.name(),
-                tokens::spl_on(cluster).len()
-            ),
+                solana_entries(environment, cluster)?,
+            ));
         }
 
         let mut files = Vec::new();
