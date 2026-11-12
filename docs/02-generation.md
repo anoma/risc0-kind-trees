@@ -13,6 +13,7 @@ This document specifies the files of the repository and the checks of the genera
 ## 2. Checks
 
 - **The committed trees are the generated trees.** The CI check `generate-check` fails if the committed trees differ from the trees that the generator makes from the committed inputs ([ADR-0002](./adr/0002-trees-are-generated-and-committed.md)).
-- **Each protocol adapter stores the generated root.** A promotion of a branch passes only if each protocol adapter of the environment stores the generated root. It also checks R2 on the chains ([ADR-0007](./adr/0007-freshness-gates-promotions-token-validation-runs-always.md)).
+- **Each protocol adapter stores the generated root.** A promotion of a branch passes only if each protocol adapter of the environment stores the generated root ([ADR-0007](./adr/0007-freshness-gates-promotions-token-validation-runs-always.md)).
+- **Each forwarder accepts a listed version.** A promotion also checks that the forwarder of the environment on each chain accepts the logic ref of a listed version. Each listed version is a member of each fungibility domain, so the resources of each listed version can then convert into resources that the forwarder accepts ([`01-entries-and-rules.md`](./01-entries-and-rules.md#2-rules)).
 
 A proof against a new tree is valid only after the protocol adapter stores its root. Until then, provers use the old tree or the empty tree.
