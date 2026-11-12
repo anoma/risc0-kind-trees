@@ -1,0 +1,110 @@
+[
+  {
+    "_metadata": {
+      "type": "GenericCallResource",
+      "version": "2.0.0-rc.5",
+      "forwarder": "0x75A0B166D7CDA008d8f04cAC9a5457310Adb16DB"
+    },
+    "logic_ref": "1534f842d9d987287cafb85b3547aee064c06140f17a5d45e914a2861a66826d",
+    "label_ref": "aa97e0142725a64c322836b628efdf5be2554b72b20d69da640632fc46822017",
+    "kind_base": "044fc11311164af737ecdd3e3870d8436a15347c4aa2a55b25dfe14b185d89dcfb0d8ba88e2f60c1cde8d1549922fde8a71562c3bec7ae59d31dfa171528c2afb9"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "2.0.0-rc.5",
+      "name": "USDC",
+      "token": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      "forwarder": "0x2059F1069242da20A43dBcbD5506e99d7953197F",
+      "status": "active"
+    },
+    "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+    "label_ref": "9adf81d9ed13aac084aa844ca8881cda51df8ec2d8053f3ad9af77d58a7487a3",
+    "kind_base": "0426bce551a6081ea598e2aff411b656061d00456c3f1eb41e0a3d4b7ff0e050d7339047743584a850eb56f2ad34e49e82664ed5855ffa2cf6995a32d98395b2dd"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "2.0.0-rc.5",
+      "name": "WMON",
+      "token": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
+      "forwarder": "0x2059F1069242da20A43dBcbD5506e99d7953197F",
+      "status": "active"
+    },
+    "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+    "label_ref": "9f0d43a2d38c9f239de6c0f6e0eb0ea7d69dbf53bb0fe36cb11cd5ce6800063a",
+    "kind_base": "047335e67fdd1e9c0c1d76ded2310a08220d4c9bf658b88356cfc4b0bff973579bb66d2132acddfc310a427eeca80b67d80b69df42bba550daa32fcbd4e077d569"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "1.0.0",
+      "name": "WMON",
+      "token": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
+      "forwarder": "0x23dc44E1a1c3d5432EeC8A1c027e22ccDC0A8F54",
+      "status": "deprecated",
+      "alias_of": {
+        "version": "2.0.0-rc.5",
+        "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+        "label_ref": "9f0d43a2d38c9f239de6c0f6e0eb0ea7d69dbf53bb0fe36cb11cd5ce6800063a"
+      }
+    },
+    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
+    "label_ref": "13748b9f4fa41353b1d4cfbfaf31a152e0bfae1f39388bd34d9ea128a41f23a3",
+    "kind_base": "047335e67fdd1e9c0c1d76ded2310a08220d4c9bf658b88356cfc4b0bff973579bb66d2132acddfc310a427eeca80b67d80b69df42bba550daa32fcbd4e077d569"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "1.0.0",
+      "name": "USDC",
+      "token": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      "forwarder": "0x23dc44E1a1c3d5432EeC8A1c027e22ccDC0A8F54",
+      "status": "deprecated",
+      "alias_of": {
+        "version": "2.0.0-rc.5",
+        "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+        "label_ref": "9adf81d9ed13aac084aa844ca8881cda51df8ec2d8053f3ad9af77d58a7487a3"
+      }
+    },
+    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
+    "label_ref": "71b2f28c89913bbb672719625fd63ae45928da39729a8f2b30fa36fd9350d92f",
+    "kind_base": "0426bce551a6081ea598e2aff411b656061d00456c3f1eb41e0a3d4b7ff0e050d7339047743584a850eb56f2ad34e49e82664ed5855ffa2cf6995a32d98395b2dd"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "1.0.0",
+      "name": "USDC",
+      "token": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      "forwarder": "0x2059F1069242da20A43dBcbD5506e99d7953197F",
+      "status": "deprecated",
+      "alias_of": {
+        "version": "2.0.0-rc.5",
+        "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+        "label_ref": "9adf81d9ed13aac084aa844ca8881cda51df8ec2d8053f3ad9af77d58a7487a3"
+      }
+    },
+    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
+    "label_ref": "9adf81d9ed13aac084aa844ca8881cda51df8ec2d8053f3ad9af77d58a7487a3",
+    "kind_base": "0426bce551a6081ea598e2aff411b656061d00456c3f1eb41e0a3d4b7ff0e050d7339047743584a850eb56f2ad34e49e82664ed5855ffa2cf6995a32d98395b2dd"
+  },
+  {
+    "_metadata": {
+      "type": "ERC20Resource",
+      "version": "1.0.0",
+      "name": "WMON",
+      "token": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
+      "forwarder": "0x2059F1069242da20A43dBcbD5506e99d7953197F",
+      "status": "deprecated",
+      "alias_of": {
+        "version": "2.0.0-rc.5",
+        "logic_ref": "4cdafa97cacb54dc8ea04a8bac82d3890afb195b787741446911a96351fb15b6",
+        "label_ref": "9f0d43a2d38c9f239de6c0f6e0eb0ea7d69dbf53bb0fe36cb11cd5ce6800063a"
+      }
+    },
+    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
+    "label_ref": "9f0d43a2d38c9f239de6c0f6e0eb0ea7d69dbf53bb0fe36cb11cd5ce6800063a",
+    "kind_base": "047335e67fdd1e9c0c1d76ded2310a08220d4c9bf658b88356cfc4b0bff973579bb66d2132acddfc310a427eeca80b67d80b69df42bba550daa32fcbd4e077d569"
+  }
+]
