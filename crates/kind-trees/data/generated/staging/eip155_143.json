@@ -1,0 +1,12 @@
+[
+  {
+    "_metadata": {
+      "type": "GenericCallResource",
+      "version": "2.0.0-rc.5",
+      "forwarder": "0x75A0B166D7CDA008d8f04cAC9a5457310Adb16DB"
+    },
+    "logic_ref": "1534f842d9d987287cafb85b3547aee064c06140f17a5d45e914a2861a66826d",
+    "label_ref": "aa97e0142725a64c322836b628efdf5be2554b72b20d69da640632fc46822017",
+    "kind_base": "044fc11311164af737ecdd3e3870d8436a15347c4aa2a55b25dfe14b185d89dcfb0d8ba88e2f60c1cde8d1549922fde8a71562c3bec7ae59d31dfa171528c2afb9"
+  }
+]
