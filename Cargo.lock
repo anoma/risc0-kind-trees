@@ -1434,7 +1434,7 @@ dependencies = [
 
 [[package]]
 name = "anoma-risc0-kind-trees"
-version = "1.0.0-rc.8"
+version = "1.0.0-rc.9"
 dependencies = [
  "alloy",
  "alloy-chains",
@@ -1460,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "anoma-risc0-kind-trees-integration-test"
-version = "1.0.0-rc.8"
+version = "1.0.0-rc.9"
 dependencies = [
  "alloy",
  "alloy-chains",
