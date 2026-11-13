@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/kind-trees", "crates/integration-test"]
 
 [workspace.package]
-version = "1.0.0-rc.9"
+version = "1.0.0-rc.10"
 keywords = ["anoma", "kind-tree", "protocol-adapter"]
 authors = ["Anoma Foundation"]
 license = "MIT"
@@ -17,7 +17,7 @@ alloy-chains = "0.2.39"
 anoma-generic-call-forwarder-bindings = "2.0.0-rc.9"
 # The circuit crates are pinned exactly: another build has another logic ref, and so another kind.
 anoma-generic-call-library = "=2.0.0-rc.5"
-anoma-pa-evm-bindings = { git = "https://github.com/anoma/pa-evm", tag = "bindings/v3.0.0-rc.22" }
+anoma-pa-evm-bindings = "3.0.0-rc.22"
 anoma-pa-solana-client = "0.12.1"
 anoma-pa-testkit = "1.0.0-rc.9"
 anoma-rm-risc0 = { version = "2.0.0-rc.9", default-features = false, features = [
@@ -29,7 +29,6 @@ anomapay_erc20_library = "=2.0.0-rc.5"
 anomapay_erc20_witness = "=2.0.0-rc.5"
 anyhow = "1.0.104"
 bs58 = "0.5.1"
-dotenvy = "0.15.7"
 hex = "0.4.3"
 k256 = { version = "0.13.3", features = ["arithmetic", "hash2curve"] }
 risc0-zkvm = { version = "3.1.0", default-features = false }
