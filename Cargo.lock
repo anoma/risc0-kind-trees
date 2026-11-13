@@ -1355,6 +1355,21 @@ dependencies = [
 [[package]]
 name = "anoma-pa-evm-bindings"
 version = "3.0.0-rc.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35b8961a29f263d21f784ba10810817814ad7a52365d4afdd2e221541ce21a4b"
+dependencies = [
+ "alloy",
+ "alloy-chains",
+ "anoma-rm-risc0",
+ "dotenvy",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "anoma-pa-evm-bindings"
+version = "3.0.0-rc.22"
 source = "git+https://github.com/anoma/pa-evm?tag=bindings%2Fv3.0.0-rc.22#85a6e6adada36d1b875bfb40b727bb7c027f6666"
 dependencies = [
  "alloy",
@@ -1373,7 +1388,7 @@ source = "git+https://github.com/anoma/pa-evm?tag=bindings%2Fv3.0.0-rc.22#85a6e6
 dependencies = [
  "alloy",
  "alloy-chains",
- "anoma-pa-evm-bindings",
+ "anoma-pa-evm-bindings 3.0.0-rc.22 (git+https://github.com/anoma/pa-evm?tag=bindings%2Fv3.0.0-rc.22)",
  "anoma-pa-testkit",
  "anoma-risc0-verifier-bindings",
  "anoma-rm-risc0",
@@ -1434,13 +1449,13 @@ dependencies = [
 
 [[package]]
 name = "anoma-risc0-kind-trees"
-version = "1.0.0-rc.9"
+version = "1.0.0-rc.10"
 dependencies = [
  "alloy",
  "alloy-chains",
  "anoma-generic-call-forwarder-bindings",
  "anoma-generic-call-library",
- "anoma-pa-evm-bindings",
+ "anoma-pa-evm-bindings 3.0.0-rc.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "anoma-pa-solana-client",
  "anoma-rm-risc0",
  "anomapay-erc20-forwarder-bindings 3.0.0-rc.20 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1460,12 +1475,12 @@ dependencies = [
 
 [[package]]
 name = "anoma-risc0-kind-trees-integration-test"
-version = "1.0.0-rc.9"
+version = "1.0.0-rc.10"
 dependencies = [
  "alloy",
  "alloy-chains",
  "anoma-generic-call-forwarder-bindings",
- "anoma-pa-evm-bindings",
+ "anoma-pa-evm-bindings 3.0.0-rc.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "anoma-pa-evm-integration-test",
  "anoma-pa-solana-client",
  "anoma-pa-testkit",
@@ -1584,7 +1599,7 @@ source = "git+https://github.com/anoma/anomapay-erc20-forwarder?tag=bindings%2Fv
 dependencies = [
  "alloy",
  "alloy-chains",
- "anoma-pa-evm-bindings",
+ "anoma-pa-evm-bindings 3.0.0-rc.22 (git+https://github.com/anoma/pa-evm?tag=bindings%2Fv3.0.0-rc.22)",
  "anoma-pa-evm-integration-test",
  "anoma-pa-testkit",
  "anoma-rm-risc0",
