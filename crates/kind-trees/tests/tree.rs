@@ -1,15 +1,110 @@
+mod common;
+
 use alloy_chains::NamedChain;
+use anoma_generic_call_forwarder_bindings::addresses::{
+    Environment as GenericCallEnvironment, generic_call_forwarder_address,
+};
 use anoma_risc0_kind_trees::chain::{Chain, SolanaCluster};
 use anoma_risc0_kind_trees::circuits::{self, CircuitVersion, Status};
 use anoma_risc0_kind_trees::entry::Metadata;
-use anoma_risc0_kind_trees::kind;
 use anoma_risc0_kind_trees::tree::*;
 use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error, SolanaAddress};
-use anomapay_erc20_forwarder_bindings::addresses::{Environment, erc20_forwarder_address};
+use anoma_risc0_kind_trees::{kind, tokens};
+use anomapay_erc20_forwarder_bindings::addresses::{
+    Environment, erc20_forwarder_address, legacy_erc20_forwarder,
+};
 use anomapay_spl_token_forwarder_client::addresses::{
     Environment as SolanaEnvironment, spl_token_forwarder_address,
 };
+use common::own_kind;
 use risc0_zkvm::Digest;
+use risc0_zkvm::sha::{Impl, Sha256};
+use std::collections::BTreeSet;
+
+/// A kind, written as its `(logic_ref, label_ref)`.
+type Kind = (Digest, Digest);
+
+/// Every embedded tree, with the environment whose records it is built from.
+fn embedded_trees() -> Vec<(Environment, &'static Caip2ChainId, &'static Tree)> {
+    let staging = staging::trees()
+        .iter()
+        .map(|(chain, tree)| (Environment::Staging, chain, tree));
+    let production = production::trees()
+        .iter()
+        .map(|(chain, tree)| (Environment::Production, chain, tree));
+    staging.chain(production).collect()
+}
+
+/// The generic call forwarder the environment records on the chain.
+fn generic_call_forwarder(
+    environment: Environment,
+    chain: NamedChain,
+) -> Option<alloy::primitives::Address> {
+    let environment = match environment {
+        Environment::Staging => GenericCallEnvironment::Staging,
+        Environment::Production => GenericCallEnvironment::Production,
+    };
+    generic_call_forwarder_address(environment, &chain)
+}
+
+/// Adds a token's members under one label: every deprecated version, and the active version only if the token asks
+/// for a precomputed kind base.
+fn insert_members(
+    kinds: &mut BTreeSet<Kind>,
+    listed: &[CircuitVersion],
+    label_ref: Digest,
+    precompute_kind_base: bool,
+) {
+    for circuit in listed {
+        if circuit.status == Status::Deprecated || precompute_kind_base {
+            kinds.insert((circuit.logic_ref, label_ref));
+        }
+    }
+}
+
+/// The token kinds the generation rules call for on the chain, from the token list and the deployment records.
+fn expected_token_kinds(environment: Environment, chain: Chain) -> BTreeSet<Kind> {
+    let mut kinds = BTreeSet::new();
+    match chain {
+        Chain::Evm(named) => {
+            let Some(forwarder) = erc20_forwarder_address(environment, &named) else {
+                return kinds;
+            };
+            let legacy = legacy_erc20_forwarder(&named);
+            for token in tokens::on(named) {
+                let label_ref = kind::erc20_label_ref(&forwarder, &token.address);
+                insert_members(
+                    &mut kinds,
+                    circuits::erc20(),
+                    label_ref,
+                    token.precompute_kind_base,
+                );
+                if let Some(legacy) = legacy.filter(|_| token.soft_migrate_from_legacy_forwarder) {
+                    let logic_ref = Digest::try_from(legacy.logic_ref.as_slice())
+                        .expect("a logic ref is 32 bytes");
+                    kinds.insert((
+                        logic_ref,
+                        kind::erc20_label_ref(&legacy.address, &token.address),
+                    ));
+                }
+            }
+        }
+        Chain::Solana(cluster) => {
+            let Some(forwarder) = spl_forwarder(environment, cluster) else {
+                return kinds;
+            };
+            for token in tokens::spl_on(cluster) {
+                insert_members(
+                    &mut kinds,
+                    circuits::spl_token(),
+                    kind::spl_token_label_ref(&forwarder, &token.mint),
+                    token.precompute_kind_base,
+                );
+            }
+        }
+    }
+    kinds
+}
 
 /// The SPL token forwarder the environment records on the cluster, from the forwarder client's deployment record.
 fn spl_forwarder(environment: Environment, cluster: SolanaCluster) -> Option<SolanaAddress> {
@@ -186,6 +281,68 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_bas
     assert!(checked > 0, "the trees carry a token to check");
 }
 
+/// Every kind besides the generic call kind is a token member the rules call for: no unsupported token, no
+/// unrecorded forwarder, no legacy member of a token that does not soft-migrate, and no missing alias.
+#[test]
+fn every_tree_lists_exactly_the_token_kinds_the_token_list_and_the_records_call_for() {
+    let mut checked = 0;
+    for (environment, chain, tree) in embedded_trees() {
+        let context = format!("{environment:?} {chain}");
+        let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
+        let listed: BTreeSet<Kind> = tree
+            .entries
+            .iter()
+            .filter(|entry| !matches!(entry.metadata, Some(Metadata::GenericCall { .. })))
+            .map(|entry| (entry.logic_ref, entry.label_ref))
+            .collect();
+        let expected = expected_token_kinds(environment, known);
+        let missing: Vec<&Kind> = expected.difference(&listed).collect();
+        let unexpected: Vec<&Kind> = listed.difference(&expected).collect();
+        assert!(
+            missing.is_empty() && unexpected.is_empty(),
+            "{context}: missing {missing:?}, not called for {unexpected:?}"
+        );
+        checked += expected.len();
+    }
+    assert!(checked > 0, "the trees carry a token kind to check");
+}
+
+/// The generic call kind sits under the label of the recorded generic call forwarder, and Solana has none.
+#[test]
+fn every_tree_has_a_generic_call_entry_if_and_only_if_a_generic_call_forwarder_is_recorded() {
+    for (environment, chain, tree) in embedded_trees() {
+        let context = format!("{environment:?} {chain}");
+        let recorded = match Chain::try_from(chain) {
+            Ok(Chain::Evm(named)) => generic_call_forwarder(environment, named),
+            Ok(Chain::Solana(_)) => None,
+            Err(error) => panic!("{context}: {error}"),
+        };
+        let generic_calls: Vec<&Entry> = tree
+            .entries
+            .iter()
+            .filter(|entry| matches!(entry.metadata, Some(Metadata::GenericCall { .. })))
+            .collect();
+        match (recorded, generic_calls.as_slice()) {
+            (None, []) => {}
+            (Some(forwarder), [entry]) => {
+                assert!(
+                    matches!(entry.metadata, Some(Metadata::GenericCall { forwarder: named, .. }) if named == forwarder),
+                    "{context}: the generic call entry names another forwarder than {forwarder}"
+                );
+                assert_eq!(
+                    entry.label_ref,
+                    *Impl::hash_bytes(forwarder.as_slice()),
+                    "{context}: the generic call label is not sha256 of the recorded forwarder"
+                );
+            }
+            (recorded, entries) => panic!(
+                "{context}: {} generic call entries for the recorded forwarder {recorded:?}",
+                entries.len()
+            ),
+        }
+    }
+}
+
 /// An EVM consumer passes the chain it already has, so the lookups accept a `NamedChain`.
 #[test]
 fn tree_accepts_an_evm_chain() {
@@ -264,4 +421,24 @@ fn embedded_trees_match_the_recorded_roots() {
             );
         }
     }
+}
+
+#[test]
+fn root_errors_on_a_chain_the_environment_does_not_record() {
+    assert!(matches!(
+        staging::root(NamedChain::Mainnet),
+        Err(Error::UnrecordedChain(chain)) if chain == Caip2ChainId::eip155(1)
+    ));
+}
+
+#[test]
+fn aliases_lists_only_the_entries_assigned_another_kind() {
+    let alias = Entry {
+        kind_base: own_kind(2).kind_base,
+        ..own_kind(3)
+    };
+    let tree = Tree {
+        entries: vec![own_kind(1), alias.clone()],
+    };
+    assert_eq!(tree.aliases(), [&alias]);
 }

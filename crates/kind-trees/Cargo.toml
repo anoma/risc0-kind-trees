@@ -49,6 +49,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 # The deployment records the offline tree tests read the environments' protocol adapters and forwarders from.
+anoma-generic-call-forwarder-bindings = { workspace = true }
 anoma-pa-solana-client = { workspace = true }
 anomapay-erc20-forwarder-bindings = { workspace = true }
 anomapay-spl-token-forwarder-client = { workspace = true }
