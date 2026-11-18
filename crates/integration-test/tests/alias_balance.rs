@@ -81,7 +81,7 @@ fn every_token_member_balances_its_active_member() {
     ] {
         for (chain, tree) in trees {
             let entries: Vec<KindTreeEntry> = tree
-                .entries
+                .entries()
                 .iter()
                 .map(|entry| KindTreeEntry {
                     logic_ref: entry.logic_ref,
@@ -89,7 +89,7 @@ fn every_token_member_balances_its_active_member() {
                     kind_base: entry.kind_base.clone(),
                 })
                 .collect();
-            for entry in &tree.entries {
+            for entry in tree.entries() {
                 let Some(member) = resource_kind(entry) else {
                     continue;
                 };

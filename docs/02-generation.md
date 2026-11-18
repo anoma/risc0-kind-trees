@@ -12,6 +12,7 @@ This document specifies the files of the repository and the checks of the genera
 
 ## 2. Checks
 
+- **Each tree lists each kind once, with a valid kind base.** `Tree::new` rejects a kind listed twice and a kind base that is not an uncompressed secp256k1 point, as arm-risc0 does. The generator builds each tree with it, and the crate loads each committed tree with it.
 - **The committed trees are the generated trees.** The CI check `generate-check` fails if the committed trees differ from the trees that the generator makes from the committed inputs ([ADR-0002](./adr/0002-trees-are-generated-and-committed.md)).
 - **Each protocol adapter stores the generated root.** A promotion of a branch passes only if each protocol adapter of the environment stores the generated root ([ADR-0007](./adr/0007-freshness-gates-promotions-token-validation-runs-always.md)).
 - **Each forwarder accepts a listed version.** A promotion also checks that the forwarder of the environment on each chain accepts the logic ref of a listed version. Each listed version is a member of each fungibility domain, so the resources of each listed version can then convert into resources that the forwarder accepts ([`01-entries-and-rules.md`](./01-entries-and-rules.md#2-rules)).

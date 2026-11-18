@@ -71,7 +71,7 @@ fn every_converted_tree_commits_to_its_recorded_root() {
         ("production", production::roots(), production::trees()),
     ] {
         for (chain, tree) in trees {
-            let entries = tree.entries.iter().map(KindTreeEntry::from).collect();
+            let entries = tree.entries().iter().map(KindTreeEntry::from).collect();
             let converted =
                 KindTree::from_entries(entries).expect("arm-risc0 accepts the converted tree");
             assert_eq!(

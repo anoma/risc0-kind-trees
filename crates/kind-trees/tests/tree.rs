@@ -17,6 +17,7 @@ use anomapay_spl_token_forwarder_client::addresses::{
     Environment as SolanaEnvironment, spl_token_forwarder_address,
 };
 use common::own_kind;
+use k256::EncodedPoint;
 use risc0_zkvm::Digest;
 use risc0_zkvm::sha::{Impl, Sha256};
 use std::collections::BTreeSet;
@@ -188,7 +189,7 @@ fn token_entries_share_their_fungibility_domains_kind_base() {
                 Chain::Evm(named) => (erc20_forwarder_address(environment, &named), None),
                 Chain::Solana(cluster) => (None, spl_forwarder(environment, cluster)),
             };
-            for entry in &tree.entries {
+            for entry in tree.entries() {
                 let (listed, active, active_label, status) = match &entry.metadata {
                     Some(Metadata::Erc20 { token, status, .. }) => {
                         let forwarder = erc20_forwarder.unwrap_or_else(|| {
@@ -267,7 +268,7 @@ fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_bas
             };
             for (symbol, active, asks) in tokens {
                 let listed = tree
-                    .entries
+                    .entries()
                     .iter()
                     .any(|entry| (entry.logic_ref, entry.label_ref) == active);
                 assert_eq!(
@@ -290,7 +291,7 @@ fn every_tree_lists_exactly_the_token_kinds_the_token_list_and_the_records_call_
         let context = format!("{environment:?} {chain}");
         let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
         let listed: BTreeSet<Kind> = tree
-            .entries
+            .entries()
             .iter()
             .filter(|entry| !matches!(entry.metadata, Some(Metadata::GenericCall { .. })))
             .map(|entry| (entry.logic_ref, entry.label_ref))
@@ -318,7 +319,7 @@ fn every_tree_has_a_generic_call_entry_if_and_only_if_a_generic_call_forwarder_i
             Err(error) => panic!("{context}: {error}"),
         };
         let generic_calls: Vec<&Entry> = tree
-            .entries
+            .entries()
             .iter()
             .filter(|entry| matches!(entry.metadata, Some(Metadata::GenericCall { .. })))
             .collect();
@@ -371,14 +372,14 @@ fn staging_records_the_solana_devnet_tree() {
     let tree = staging::tree(devnet).expect("solana-devnet is recorded in staging");
     let listed = circuits::spl_token();
     assert_eq!(
-        tree.entries.len(),
+        tree.entries().len(),
         listed.len(),
         "one member per listed SPL token circuit version"
     );
     let active = circuits::spl_token_active();
     for circuit in listed {
         let member = tree
-            .entries
+            .entries()
             .iter()
             .find(|entry| entry.logic_ref == circuit.logic_ref)
             .unwrap_or_else(|| panic!("{} has no member", circuit.version));
@@ -432,13 +433,85 @@ fn root_errors_on_a_chain_the_environment_does_not_record() {
 }
 
 #[test]
+fn new_sorts_the_entries_by_key() {
+    let (first, second) = (own_kind(1), own_kind(2));
+    assert!(
+        first.key() < second.key(),
+        "premise: the first entry sorts first"
+    );
+    let tree = Tree::new(vec![second.clone(), first.clone()]).unwrap();
+    assert_eq!(tree.entries(), [first, second]);
+}
+
+/// A kind listed twice with two kind bases would balance against two fungibility domains. The check compares kinds
+/// only, so this also covers a kind listed twice with one kind base.
+#[test]
+fn new_rejects_a_kind_listed_twice() {
+    let entry = own_kind(1);
+    let other_base = Entry {
+        kind_base: own_kind(2).kind_base,
+        ..entry.clone()
+    };
+    assert_eq!(entry.key(), other_base.key(), "premise: one kind");
+    assert!(matches!(
+        Tree::new(vec![entry.clone(), own_kind(3), other_base]),
+        Err(Error::DuplicateKind { logic_ref, label_ref })
+            if (logic_ref, label_ref) == (entry.logic_ref, entry.label_ref)
+    ));
+}
+
+#[test]
+fn new_rejects_a_kind_base_that_is_not_an_uncompressed_curve_point() {
+    let entry = own_kind(1);
+    assert!(
+        Tree::new(vec![entry.clone()]).is_ok(),
+        "premise: the derived kind base passes"
+    );
+    let compressed = EncodedPoint::from_bytes(&entry.kind_base)
+        .unwrap()
+        .compress()
+        .as_bytes()
+        .to_vec();
+    let mut other_tag = entry.kind_base.clone();
+    other_tag[0] ^= 0xff;
+    let mut off_curve = entry.kind_base.clone();
+    off_curve[64] ^= 0xff;
+    for (malformation, kind_base) in [
+        ("the compressed encoding of the point", compressed),
+        ("another SEC1 tag", other_tag),
+        ("a y coordinate off the curve", off_curve),
+    ] {
+        let malformed = Entry {
+            kind_base,
+            ..entry.clone()
+        };
+        assert!(
+            matches!(
+                Tree::new(vec![own_kind(2), malformed]),
+                Err(Error::InvalidKindBase { logic_ref, label_ref })
+                    if (logic_ref, label_ref) == (entry.logic_ref, entry.label_ref)
+            ),
+            "{malformation}"
+        );
+    }
+}
+
+/// A tree file goes through the checks of `new`.
+#[test]
+fn from_json_rejects_a_kind_listed_twice() {
+    let json = serde_json::to_string(&[own_kind(1), own_kind(1)]).unwrap();
+    assert!(matches!(
+        Tree::from_json(&json),
+        Err(Error::DuplicateKind { .. })
+    ));
+}
+
+#[test]
 fn aliases_lists_only_the_entries_assigned_another_kind() {
     let alias = Entry {
         kind_base: own_kind(2).kind_base,
         ..own_kind(3)
     };
-    let tree = Tree {
-        entries: vec![own_kind(1), alias.clone()],
-    };
+    let tree = Tree::new(vec![own_kind(1), alias.clone()]).unwrap();
     assert_eq!(tree.aliases(), [&alias]);
 }

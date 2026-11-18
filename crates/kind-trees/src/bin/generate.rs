@@ -9,7 +9,7 @@ use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments
 use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
     AliasOf, Caip2ChainId, Chain, CircuitVersion, Entry, Metadata, SolanaAddress, SolanaCluster,
-    Status, circuits, kind, root, tokens,
+    Status, Tree, circuits, kind, tokens,
 };
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
 use anyhow::{Context, Result, bail, ensure};
@@ -145,18 +145,6 @@ fn domain(
         entries.push(member(circuit, label_ref, &point, alias_of, &metadata));
     }
     Ok((point, active_kind))
-}
-
-/// A tree's entries in tree order, sorted by kind, with no kind listed twice.
-fn sorted(mut entries: Vec<Entry>, chain: &Chain) -> Result<Vec<Entry>> {
-    entries.sort_by_key(Entry::key);
-    if entries
-        .windows(2)
-        .any(|pair| pair[0].key() == pair[1].key())
-    {
-        bail!("{chain}: duplicate kind");
-    }
-    Ok(entries)
 }
 
 /// The circuit version behind the generic-call logic ref, and that of the pinned ERC20 crate.
@@ -433,17 +421,17 @@ fn main() -> Result<()> {
         let mut files = Vec::new();
         let mut roots = BTreeMap::new();
         for (chain, entries) in trees {
-            let entries = sorted(entries, &chain)?;
+            let tree = Tree::new(entries).with_context(|| format!("{name} {chain}"))?;
             let id = Caip2ChainId::from(chain);
             files.push((
                 id.file_name(),
-                serde_json::to_string_pretty(&entries)? + "\n",
+                serde_json::to_string_pretty(tree.entries())? + "\n",
             ));
             roots.insert(
                 id,
                 ChainRoot {
                     comment: chain.to_string(),
-                    root: hex::encode(root::of(&entries).as_bytes()),
+                    root: hex::encode(tree.root().as_bytes()),
                 },
             );
         }

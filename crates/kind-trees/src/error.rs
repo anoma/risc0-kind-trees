@@ -1,4 +1,5 @@
 use crate::chain::Caip2ChainId;
+use risc0_zkvm::Digest;
 use solana_cluster_type::ClusterType;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -14,6 +15,16 @@ pub enum Error {
     InvalidDigest(String),
     #[error("invalid tree JSON: {0}")]
     InvalidTreeJson(#[from] serde_json::Error),
+    #[error("the kind ({logic_ref}, {label_ref}) is listed twice")]
+    DuplicateKind {
+        logic_ref: Digest,
+        label_ref: Digest,
+    },
+    #[error("the kind base of ({logic_ref}, {label_ref}) is not an uncompressed secp256k1 point")]
+    InvalidKindBase {
+        logic_ref: Digest,
+        label_ref: Digest,
+    },
     #[error("cannot read the tree file: {0}")]
     Io(#[from] std::io::Error),
     #[error("invalid CAIP-2 chain ID {value:?}: {reason}")]

@@ -6,23 +6,46 @@ use crate::chain::Caip2ChainId;
 use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::root;
+use k256::elliptic_curve::sec1::{FromEncodedPoint, Tag};
+use k256::{AffinePoint, EncodedPoint};
 use risc0_zkvm::Digest;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// The ordered entries of one chain's kind tree.
+/// One chain's kind tree: its entries in key order, each kind listed once with a kind base the resource machine
+/// accepts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Tree {
-    pub entries: Vec<Entry>,
+    entries: Vec<Entry>,
 }
 
 impl Tree {
+    /// Builds a tree as arm-risc0 does: rejects a kind base that is not an uncompressed secp256k1 point and a kind
+    /// listed twice, and sorts the entries by key.
+    pub fn new(mut entries: Vec<Entry>) -> Result<Self> {
+        if let Some(entry) = entries.iter().find(|entry| !is_kind_base(&entry.kind_base)) {
+            return Err(Error::InvalidKindBase {
+                logic_ref: entry.logic_ref,
+                label_ref: entry.label_ref,
+            });
+        }
+        entries.sort_by_key(Entry::key);
+        if let Some(pair) = entries
+            .windows(2)
+            .find(|pair| pair[0].key() == pair[1].key())
+        {
+            return Err(Error::DuplicateKind {
+                logic_ref: pair[0].logic_ref,
+                label_ref: pair[0].label_ref,
+            });
+        }
+        Ok(Self { entries })
+    }
+
     /// Parses a tree from its JSON representation: an array of entries.
     pub fn from_json(json: &str) -> Result<Self> {
-        Ok(Self {
-            entries: serde_json::from_str(json)?,
-        })
+        Self::new(serde_json::from_str(json)?)
     }
 
     /// Reads a tree from a generated `<namespace>_<reference>.json` file.
@@ -30,16 +53,14 @@ impl Tree {
         Self::from_json(&std::fs::read_to_string(path)?)
     }
 
+    /// The entries, in key order.
+    pub fn entries(&self) -> &[Entry] {
+        &self.entries
+    }
+
     /// The root over the entries.
     pub fn root(&self) -> Digest {
         root::of(&self.entries)
-    }
-
-    /// Whether the entries are sorted by `logic_ref ‖ label_ref`, as the generator emits them.
-    pub fn is_sorted(&self) -> bool {
-        self.entries
-            .windows(2)
-            .all(|pair| pair[0].key() < pair[1].key())
     }
 
     /// The aliases: the entries assigned another kind as their kind base. Only the tree can express them, and they
@@ -50,6 +71,15 @@ impl Tree {
             .filter(|entry| entry.is_alias())
             .collect()
     }
+}
+
+/// Whether `bytes` is the uncompressed SEC1 encoding of a secp256k1 point, the only kind base the resource machine
+/// accepts.
+fn is_kind_base(bytes: &[u8]) -> bool {
+    EncodedPoint::from_bytes(bytes).is_ok_and(|encoded| {
+        encoded.tag() == Tag::Uncompressed
+            && AffinePoint::from_encoded_point(&encoded).is_some().into()
+    })
 }
 
 /// One chain's recorded root. The `_comment` naming the chain is review context and is not deserialized.
