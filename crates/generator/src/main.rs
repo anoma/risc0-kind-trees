@@ -7,7 +7,7 @@ use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCall
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
 use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
-    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, Tree, circuits, tokens,
+    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, circuits, tokens,
 };
 use anoma_risc0_kind_trees_generator::{self as generator, GenericCallCircuit, LegacyForwarder};
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
@@ -290,7 +290,7 @@ fn main() -> Result<()> {
         let mut files = Vec::new();
         let mut roots = BTreeMap::new();
         for (chain, entries) in trees {
-            let tree = Tree::new(entries).with_context(|| format!("{name} {chain}"))?;
+            let tree = generator::tree(entries).with_context(|| format!("{name} {chain}"))?;
             let id = Caip2ChainId::from(chain);
             files.push((
                 id.file_name(),
