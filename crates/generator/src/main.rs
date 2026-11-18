@@ -1,4 +1,4 @@
-//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`) and the
+//! Regenerates `crates/kind-trees/data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`) and the
 //! pinned dependencies (the generic-call logic ref, the forwarder and protocol adapter deployment
 //! records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
 
@@ -384,7 +384,7 @@ fn chain_entries(
 }
 
 fn main() -> Result<()> {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("data");
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../kind-trees/data");
 
     let versions = versions()?;
     check_circuit_versions(&versions)?;

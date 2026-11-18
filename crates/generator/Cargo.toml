@@ -1,0 +1,28 @@
+[package]
+name = "anoma-risc0-kind-trees-generator"
+version.workspace = true
+description = "Writes the kind trees of anoma-risc0-kind-trees from the authored inputs and the deployment records."
+publish = false
+keywords.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+edition.workspace = true
+
+[dependencies]
+alloy = { workspace = true }
+alloy-chains = { workspace = true }
+anoma-generic-call-forwarder-bindings = { workspace = true }
+anoma-generic-call-library = { workspace = true }
+anoma-pa-evm-bindings = { workspace = true }
+anoma-pa-solana-client = { workspace = true }
+anoma-risc0-kind-trees = { workspace = true }
+anomapay-erc20-forwarder-bindings = { workspace = true }
+anomapay-spl-token-forwarder-client = { workspace = true }
+anomapay_erc20_library = { workspace = true }
+anyhow = { workspace = true }
+hex = { workspace = true }
+risc0-zkvm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

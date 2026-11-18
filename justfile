@@ -19,7 +19,7 @@ default:
 
 # Regenerate `data/generated/` from the authored inputs and the pinned dependencies
 generate:
-    cargo run --package anoma-risc0-kind-trees --features generate --bin generate
+    cargo run --package anoma-risc0-kind-trees-generator
 
 # Verify the committed generated trees match a regeneration
 generate-check: generate
@@ -57,7 +57,6 @@ crates-publish *args:
 # Lint all crates (clippy)
 crates-lint:
     cargo clippy --all-targets --no-deps -- -Dwarnings
-    cargo clippy --all-targets --features generate --no-deps -- -Dwarnings
     cargo clippy --all-targets --features e2e --no-deps -- -Dwarnings
 
 # Format all crates

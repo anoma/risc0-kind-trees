@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/kind-trees", "crates/integration-test"]
+members = ["crates/kind-trees", "crates/generator", "crates/integration-test"]
 
 [workspace.package]
 version = "1.0.0-rc.10"
