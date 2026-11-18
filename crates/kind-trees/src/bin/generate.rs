@@ -177,22 +177,26 @@ fn versions() -> Result<Versions> {
     let metadata: Value =
         serde_json::from_slice(&output.stdout).context("cargo metadata output")?;
 
-    let version_by_id: BTreeMap<&str, &str> = metadata["packages"]
+    let packages = metadata["packages"]
         .as_array()
-        .context("cargo metadata reported no packages")?
+        .context("cargo metadata reported no packages")?;
+    let version_by_id: BTreeMap<&str, &str> = packages
         .iter()
         .filter_map(|package| Some((package["id"].as_str()?, package["version"].as_str()?)))
         .collect();
 
+    // Every package ID in this workspace contains the folder name, so only the manifest path names this package.
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let id = packages
+        .iter()
+        .find(|package| package["manifest_path"].as_str().map(Path::new) == Some(&manifest))
+        .and_then(|package| package["id"].as_str())
+        .context("cargo metadata does not list this package")?;
     let node = metadata["resolve"]["nodes"]
         .as_array()
         .context("cargo metadata reported no resolve graph")?
         .iter()
-        .find(|node| {
-            node["id"]
-                .as_str()
-                .is_some_and(|id| id.contains(env!("CARGO_PKG_NAME")))
-        })
+        .find(|node| node["id"].as_str() == Some(id))
         .context("this package is missing from the resolve graph")?;
 
     let version_of = |lib: &str| -> Result<String> {
