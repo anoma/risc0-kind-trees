@@ -149,24 +149,18 @@ fn pinned_erc20_circuits(versions: &Versions) -> Vec<(String, Digest)> {
     )]
 }
 
-/// Each list must pass its own checks, and every pinned circuit crate must be listed with the logic ref it
+/// Each list must pass `circuits::check`, and every pinned circuit crate must be listed with the logic ref it
 /// compiles to. Raising a pin without listing the release stops here, and so does a mistyped logic ref.
 fn check_circuit_versions(versions: &Versions) -> Result<()> {
-    for (resource, check, listed, pinned) in [
+    for (resource, listed, pinned) in [
         (
             "ERC20Resource",
-            circuits::check_erc20 as fn() -> std::result::Result<(), String>,
             circuits::erc20(),
             pinned_erc20_circuits(versions),
         ),
-        (
-            "SPLTokenResource",
-            circuits::check_spl_token,
-            circuits::spl_token(),
-            Vec::new(),
-        ),
+        ("SPLTokenResource", circuits::spl_token(), Vec::new()),
     ] {
-        check().map_err(|error| anyhow::anyhow!("circuit-versions.json: {resource}: {error}"))?;
+        circuits::check(listed).with_context(|| format!("circuit-versions.json: {resource}"))?;
         for (version, compiled) in pinned {
             ensure!(
                 listed.iter().any(|circuit| circuit.logic_ref == compiled),
