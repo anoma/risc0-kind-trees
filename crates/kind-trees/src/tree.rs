@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde_with::hex::Hex;
 use serde_with::serde_as;
 use std::collections::BTreeMap;
-use std::path::Path;
 
 /// One chain's kind tree: its entries in key order, each kind listed once with a kind base the resource machine
 /// accepts.
@@ -50,11 +49,6 @@ impl Tree {
         Self::new(serde_json::from_str(json)?)
     }
 
-    /// Reads a tree from a generated `<namespace>_<reference>.json` file.
-    pub fn load(path: impl AsRef<Path>) -> Result<Self> {
-        Self::from_json(&std::fs::read_to_string(path)?)
-    }
-
     /// The entries, in key order.
     pub fn entries(&self) -> &[Entry] {
         &self.entries
@@ -63,15 +57,6 @@ impl Tree {
     /// The root over the entries.
     pub fn root(&self) -> Digest {
         root::of(&self.entries)
-    }
-
-    /// The aliases: the entries assigned another kind as their kind base. Only the tree can express them, and they
-    /// are the review surface.
-    pub fn aliases(&self) -> Vec<&Entry> {
-        self.entries
-            .iter()
-            .filter(|entry| entry.is_alias())
-            .collect()
     }
 }
 
@@ -145,11 +130,6 @@ macro_rules! environment_module {
                 )),*];
                 trees.into_iter().collect()
             });
-
-            /// The chains this environment records a tree for.
-            pub fn chains() -> Vec<Caip2ChainId> {
-                ROOTS.keys().cloned().collect()
-            }
 
             /// The roots of all recorded chains.
             pub fn roots() -> &'static BTreeMap<Caip2ChainId, Digest> {

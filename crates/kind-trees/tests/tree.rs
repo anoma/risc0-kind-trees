@@ -453,16 +453,6 @@ fn from_json_rejects_a_kind_listed_twice() {
     ));
 }
 
-#[test]
-fn aliases_lists_only_the_entries_assigned_another_kind() {
-    let alias = Entry {
-        kind_base: own_kind(2).kind_base,
-        ..own_kind(3)
-    };
-    let tree = Tree::new(vec![own_kind(1), alias.clone()]).unwrap();
-    assert_eq!(tree.aliases(), [&alias]);
-}
-
 /// A root in the format of `roots.json`, with the `_comment` that names its chain.
 fn chain_root() -> serde_json::Value {
     serde_json::json!({ "_comment": "the chain name", "root": Digest::from_bytes([1; 32]).to_string() })

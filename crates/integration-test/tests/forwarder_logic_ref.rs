@@ -39,17 +39,17 @@ async fn the_promoted_forwarders_accept_a_listed_circuit_version() -> Result<()>
         return Ok(());
     };
     let chains = match environment {
-        Environment::Staging => tree::staging::chains(),
-        Environment::Production => tree::production::chains(),
+        Environment::Staging => tree::staging::roots(),
+        Environment::Production => tree::production::roots(),
     };
 
-    for chain in chains {
-        match Chain::try_from(&chain)? {
+    for chain in chains.keys() {
+        match Chain::try_from(chain)? {
             Chain::Evm(evm_chain) => {
                 if erc20_forwarder_address(environment, &evm_chain).is_none() {
                     continue; // No ERC20 fungibility domain on this chain.
                 }
-                let provider = provider(&chain)?;
+                let provider = provider(chain)?;
                 let forwarder =
                     erc20_forwarder(&provider, environment)
                         .await

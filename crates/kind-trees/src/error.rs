@@ -53,8 +53,6 @@ pub enum Error {
         "the circuit version {active} is active, but the listed version {highest} is higher; an old version never becomes active again"
     )]
     ActiveCircuitVersionNotHighest { active: String, highest: String },
-    #[error("cannot read the tree file: {0}")]
-    Io(#[from] std::io::Error),
     #[error("invalid CAIP-2 chain ID {value:?}: {reason}")]
     InvalidCaip2ChainId { value: String, reason: &'static str },
     #[error("no chain known for {0}")]
