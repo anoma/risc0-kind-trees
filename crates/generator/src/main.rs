@@ -33,17 +33,9 @@ fn legacy_erc20_forwarder(chain: &NamedChain) -> Option<LegacyForwarder> {
     anomapay_erc20_forwarder_bindings::addresses::legacy_erc20_forwarder(chain).map(|forwarder| {
         LegacyForwarder {
             address: forwarder.address,
-            logic_ref: digest(forwarder.logic_ref.as_slice()),
+            logic_ref: Digest::from_bytes(forwarder.logic_ref.0),
         }
     })
-}
-
-fn digest(bytes: &[u8]) -> Digest {
-    Digest::try_from(bytes).expect("a logic ref is 32 bytes")
-}
-
-fn hex(digest: &Digest) -> String {
-    hex::encode(digest.as_bytes())
 }
 
 /// The protocol adapter's environment is the generator's; each forwarder crate declares its own.
@@ -106,36 +98,17 @@ fn versions() -> Result<Versions> {
     })
 }
 
-/// The ERC20 circuit crate this generator pins, the active version's, with the logic ref it compiles to. A release
-/// replaces the pin. Another listed version is checked only by a deployment record that names its logic ref, as the
-/// legacy forwarders' records name the legacy version's.
-fn pinned_erc20_circuits(versions: &Versions) -> Vec<(String, Digest)> {
-    vec![(
-        versions.anomapay_erc20.clone(),
-        digest(anomapay_erc20_library::ANOMAPAY_ERC20_CIRCUIT_ID.as_bytes()),
-    )]
-}
-
-/// Each list must pass `circuits::check`, and every pinned circuit crate must be listed with the logic ref it
-/// compiles to. Raising a pin without listing the release stops here, and so does a mistyped logic ref.
+/// Each list must pass `circuits::check`, and the pinned ERC20 circuit crate must be listed with the logic ref it
+/// compiles to. Raising the pin without listing the release stops here, and so does a mistyped logic ref.
 fn check_circuit_versions(versions: &Versions) -> Result<()> {
-    for (resource, listed, pinned) in [
-        (
-            "ERC20Resource",
-            circuits::erc20(),
-            pinned_erc20_circuits(versions),
-        ),
-        ("SPLTokenResource", circuits::spl_token(), Vec::new()),
-    ] {
-        circuits::check(listed).with_context(|| format!("circuit-versions.json: {resource}"))?;
-        for (version, compiled) in pinned {
-            ensure!(
-                listed.iter().any(|circuit| circuit.logic_ref == compiled),
-                "a {resource} circuit crate at {version} is pinned and compiles to logic ref {}, which circuit-versions.json does not list",
-                hex(&compiled)
-            );
-        }
-    }
+    circuits::check(circuits::erc20()).context("circuit-versions.json: ERC20Resource")?;
+    circuits::check(circuits::spl_token()).context("circuit-versions.json: SPLTokenResource")?;
+    let compiled = *anomapay_erc20_library::ANOMAPAY_ERC20_CIRCUIT_ID;
+    ensure!(
+        circuits::erc20_version(&compiled).is_some(),
+        "the pinned ERC20Resource circuit crate {} compiles to logic ref {compiled}, which circuit-versions.json does not list",
+        versions.anomapay_erc20
+    );
     Ok(())
 }
 
@@ -169,7 +142,7 @@ fn solana_entries(environment: Environment, cluster: SolanaCluster) -> Result<Ve
 fn chain_entries(
     environment: Environment,
     chain: NamedChain,
-    versions: &Versions,
+    generic_call: &GenericCallCircuit,
 ) -> Result<Vec<Entry>> {
     let mut entries = Vec::new();
     if let Some(forwarder) =
@@ -178,13 +151,7 @@ fn chain_entries(
             &chain,
         )
     {
-        entries.push(generator::generic_call_entry(
-            forwarder,
-            &GenericCallCircuit {
-                logic_ref: digest(anoma_generic_call_library::GENERIC_CALL_ID.as_bytes()),
-                version: versions.generic_call.clone(),
-            },
-        )?);
+        entries.push(generator::generic_call_entry(forwarder, generic_call)?);
     }
 
     let supported = tokens::on(chain);
@@ -212,6 +179,10 @@ fn main() -> Result<()> {
 
     let versions = versions()?;
     check_circuit_versions(&versions)?;
+    let generic_call = GenericCallCircuit {
+        logic_ref: *anoma_generic_call_library::GENERIC_CALL_ID,
+        version: versions.generic_call,
+    };
 
     // Everything is generated before anything is written: a rejected input must not leave the tree without
     // the trees the crate embeds.
@@ -235,7 +206,7 @@ fn main() -> Result<()> {
         let mut roots = BTreeMap::new();
         for chain in chains {
             let entries = match chain {
-                Chain::Evm(chain) => chain_entries(environment, chain, &versions),
+                Chain::Evm(chain) => chain_entries(environment, chain, &generic_call),
                 Chain::Solana(cluster) => solana_entries(environment, cluster),
             };
             let tree = entries
@@ -250,7 +221,7 @@ fn main() -> Result<()> {
                 id,
                 ChainRoot {
                     comment: chain.to_string(),
-                    root: hex::encode(tree.root().as_bytes()),
+                    root: tree.root().to_string(),
                 },
             );
         }
