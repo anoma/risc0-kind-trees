@@ -543,6 +543,15 @@ fn roots_from_json_reads_the_root_of_each_chain() {
 }
 
 #[test]
+fn roots_from_json_rejects_a_chain_listed_twice() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    assert!(matches!(
+        roots_from_json(&roots_json(&[&sepolia, &sepolia])),
+        Err(Error::InvalidRootsJson(error)) if error.to_string().contains("duplicate key")
+    ));
+}
+
+#[test]
 fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
     let unknown = Caip2ChainId::eip155(u64::MAX);
     assert!(matches!(

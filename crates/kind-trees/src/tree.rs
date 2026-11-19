@@ -2,7 +2,7 @@
 //! `data/generated/<environment>/<namespace>_<reference>.json`, named for the chain's CAIP-2 chain ID; the trees and
 //! roots are embedded and looked up per chain.
 
-use crate::chain::{Caip2ChainId, Chain};
+use crate::chain::{self, Caip2ChainId, Chain};
 use crate::entry::{Entry, hex_digest};
 use crate::error::{Error, Result};
 use crate::root;
@@ -82,10 +82,10 @@ fn is_kind_base(bytes: &[u8]) -> bool {
     })
 }
 
-/// Reads roots in the format of `roots.json`. Rejects a chain that `Chain` does not know.
+/// Reads roots in the format of `roots.json`. Rejects a chain listed twice and a chain that `Chain` does not know.
 pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
     let recorded: BTreeMap<Caip2ChainId, ChainRoot> =
-        serde_json::from_str(json).map_err(Error::InvalidRootsJson)?;
+        chain::by_chain_from_json(json).map_err(Error::InvalidRootsJson)?;
     recorded
         .into_iter()
         .map(|(id, recorded)| {

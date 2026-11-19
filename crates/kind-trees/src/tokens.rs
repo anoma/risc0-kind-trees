@@ -2,7 +2,7 @@
 //! Being supported is a standing commitment: a chain may list tokens before anything is deployed to it. An EVM
 //! chain lists ERC20 tokens by address; a Solana cluster lists SPL token mints.
 
-use crate::chain::{Caip2ChainId, Chain, SolanaCluster};
+use crate::chain::{self, Caip2ChainId, Chain, SolanaCluster};
 use crate::error::{Error, Result};
 use crate::solana::SolanaAddress;
 use alloy::primitives::Address;
@@ -50,10 +50,10 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// Reads a list in the format of `tokens.json`. Rejects a chain that `Chain` does not know.
+    /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice and a chain that `Chain` does not know.
     pub fn from_json(json: &str) -> Result<Self> {
         let sections: BTreeMap<Caip2ChainId, serde_json::Value> =
-            serde_json::from_str(json).map_err(Error::InvalidTokensJson)?;
+            chain::by_chain_from_json(json).map_err(Error::InvalidTokensJson)?;
         let mut tokens = Self {
             erc20: BTreeMap::new(),
             spl: BTreeMap::new(),

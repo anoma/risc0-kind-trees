@@ -112,6 +112,16 @@ fn from_json_reads_each_section_as_the_token_type_of_its_chain_family() {
 }
 
 #[test]
+fn from_json_rejects_a_chain_listed_twice() {
+    let empty = section(Vec::new());
+    assert!(Tokens::from_json(&list(&[(&sepolia(), &empty)])).is_ok());
+    assert!(matches!(
+        Tokens::from_json(&list(&[(&sepolia(), &empty), (&sepolia(), &empty)])),
+        Err(Error::InvalidTokensJson(error)) if error.to_string().contains("duplicate key")
+    ));
+}
+
+#[test]
 fn from_json_rejects_a_chain_that_chain_does_not_know() {
     let unknown = Caip2ChainId::eip155(u64::MAX);
     assert!(matches!(
