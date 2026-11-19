@@ -1,13 +1,14 @@
 //! Regenerates `crates/kind-trees/data/generated/` from the authored inputs (`tokens.json`,
-//! `circuit-versions.json`) and the pinned dependencies (the generic-call logic ref, the forwarder and protocol
-//! adapter deployment records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
+//! `circuit-versions.json`, `migrated-chains.json`) and the pinned dependencies (the generic-call logic ref, the
+//! forwarder and protocol adapter deployment records). CI reruns this and fails on any diff, so the committed artifacts
+//! always match the pins.
 
 use alloy_chains::NamedChain;
 use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCallEnvironment;
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
 use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
-    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, Tree, circuits, tokens,
+    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, Tree, circuits, migrated, tokens,
 };
 use anoma_risc0_kind_trees_generator::{self as generator, GenericCallCircuit, LegacyForwarder};
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
@@ -15,7 +16,7 @@ use anyhow::{Context, Result, ensure};
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use risc0_zkvm::Digest;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -36,6 +37,31 @@ fn legacy_erc20_forwarder(chain: &NamedChain) -> Option<LegacyForwarder> {
             logic_ref: Digest::from_bytes(forwarder.logic_ref.0),
         }
     })
+}
+
+/// The chains on which the environment's protocol adapter copied the legacy state.
+fn migrated_chains(environment: Environment) -> &'static BTreeSet<Caip2ChainId> {
+    match environment {
+        Environment::Staging => &migrated::chains().staging,
+        Environment::Production => &migrated::chains().production,
+    }
+}
+
+/// A migrated chain ran a legacy protocol adapter, so the forwarder repository records its legacy ERC20 forwarder.
+/// A chain listed without one stops here, also before its protocol adapter is recorded.
+fn check_migrated_chains() -> Result<()> {
+    for (environment, name) in [
+        (Environment::Staging, "staging"),
+        (Environment::Production, "production"),
+    ] {
+        for chain in migrated_chains(environment) {
+            ensure!(
+                matches!(Chain::try_from(chain)?, Chain::Evm(named) if legacy_erc20_forwarder(&named).is_some()),
+                "migrated-chains.json lists {chain} for {name}, but no legacy ERC20 forwarder is recorded on it"
+            );
+        }
+    }
+    Ok(())
 }
 
 /// The protocol adapter's environment is the generator's; each forwarder crate declares its own.
@@ -155,6 +181,8 @@ fn chain_entries(
     }
 
     let supported = tokens::on(chain);
+    let legacy = legacy_erc20_forwarder(&chain)
+        .filter(|_| migrated_chains(environment).contains(&Caip2ChainId::from(chain)));
     match anomapay_erc20_forwarder_bindings::addresses::erc20_forwarder_address(
         erc20_environment(environment),
         &chain,
@@ -163,7 +191,7 @@ fn chain_entries(
             supported,
             circuits::erc20(),
             forwarder,
-            legacy_erc20_forwarder(&chain).as_ref(),
+            legacy.as_ref(),
         )?),
         None if supported.is_empty() => {}
         None => eprintln!(
@@ -179,6 +207,7 @@ fn main() -> Result<()> {
 
     let versions = versions()?;
     check_circuit_versions(&versions)?;
+    check_migrated_chains()?;
     let generic_call = GenericCallCircuit {
         logic_ref: *anoma_generic_call_library::GENERIC_CALL_ID,
         version: versions.generic_call,

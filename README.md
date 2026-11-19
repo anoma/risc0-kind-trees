@@ -19,12 +19,13 @@ crates/kind-trees/             the library: the types, the root, the token list 
 ├── data/
 │   ├── tokens.json            authored: the supported tokens, per chain
 │   ├── circuit-versions.json  authored: the ERC20 and SPL token circuit versions, once for every chain
+│   ├── migrated-chains.json   authored: the migrated chains of each environment
 │   └── generated/
 │       ├── staging/           <namespace>_<reference>.json trees + roots.json
 │       └── production/
 └── src/
 crates/generator/              the generator, not published: writes data/generated/ from the inputs and the deployment records
-crates/integration-test/       on-chain token, forwarder and Solana cluster checks, promotion freshness and soft-migration gates, arm-risc0 cross-check
+crates/integration-test/       on-chain token, forwarder, migrated chain and Solana cluster checks, promotion freshness and soft-migration gates, arm-risc0 cross-check
 docs/adr/                      the decisions behind this layout
 ```
 
@@ -124,12 +125,13 @@ An SPL token circuit release appends its version to `SPLTokenResource` in `circu
 
 ### Alias the legacy ERC20 forwarder
 
-On a chain that ran a legacy protocol adapter, the ERC20 forwarder changes once: the legacy ERC20 forwarder is immutable, and the environment's forwarder is a proxy at a new address. Both accept the same logic ref, so a legacy-forwarder resource differs from a resource of the environment's forwarder only in the forwarder inside its label. On every chain that records both forwarders, the generator writes one member under the legacy forwarder's label for each token the list marks for soft migration, an alias of the active version under the label of the environment's forwarder.
+On a chain that ran a legacy protocol adapter, the ERC20 forwarder changes once: the legacy ERC20 forwarder is immutable, and the environment's forwarder is a proxy at a new address. Both accept the same logic ref, so a legacy-forwarder resource differs from a resource of the environment's forwarder only in the forwarder inside its label. On each migrated chain of an environment, the generator writes one member under the legacy forwarder's label for each token the list marks for soft migration, an alias of the active version under the label of the environment's forwarder. A migrated chain is one on which the environment's protocol adapter copied the legacy state. A chain whose protocol adapter starts fresh holds no legacy-forwarder resource, so its tree has no such member.
 
 1. Record the legacy ERC20 forwarder, with the logic ref it accepts, in the `legacy` array of the forwarder repository's `deployments.json`, and release the forwarder bindings.
-2. In [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), set `soft_migrate_from_legacy_forwarder` to `true` for every token whose legacy-forwarder resources must be fungible with those of the environment's forwarder, and to `false` for the rest. A token set to `false`, or missing from the list, gets no member under the legacy forwarder's label, so its legacy-forwarder resources stay in the legacy forwarder. Nothing checks this.
-3. Pin the new bindings and run `just generate`. Read the diff: one member under the legacy forwarder's label per marked token on every chain that records both forwarders.
-4. Commit the edited file together with the regenerated trees.
+2. In [`crates/kind-trees/data/migrated-chains.json`](crates/kind-trees/data/migrated-chains.json), list the chain under each environment whose protocol adapter copies the legacy state. The generator rejects a listed chain that records no legacy ERC20 forwarder. An integration test checks each recorded protocol adapter on a chain with a legacy ERC20 forwarder: it denies the legacy logic ref for created resources if and only if the list names its chain.
+3. In [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), set `soft_migrate_from_legacy_forwarder` to `true` for every token whose legacy-forwarder resources must be fungible with those of the environment's forwarder, and to `false` for the rest. A token set to `false`, or missing from the list, gets no member under the legacy forwarder's label, so its legacy-forwarder resources stay in the legacy forwarder. Nothing checks this.
+4. Pin the new bindings and run `just generate`. Read the diff: one member under the legacy forwarder's label per marked token on each migrated chain whose environment records its ERC20 forwarder.
+5. Commit the edited files together with the regenerated trees.
 
 A member under the legacy forwarder's label lets a legacy-forwarder resource unwrap from the environment's forwarder. Install the tree while the protocol adapter is paused, and unpause it only after the legacy forwarder's tokens moved to the environment's forwarder (ADR-0008).
 
