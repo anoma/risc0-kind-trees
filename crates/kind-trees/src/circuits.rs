@@ -35,6 +35,24 @@ pub struct CircuitVersion {
     pub status: Status,
 }
 
+/// The listed circuit versions of each resource type, in file order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CircuitVersions {
+    pub erc20: Vec<CircuitVersion>,
+    pub spl_token: Vec<CircuitVersion>,
+}
+
+impl CircuitVersions {
+    /// Reads lists in the format of `circuit-versions.json`.
+    pub fn from_json(json: &str) -> Result<Self> {
+        let file: File = serde_json::from_str(json).map_err(Error::InvalidCircuitVersionsJson)?;
+        Ok(Self {
+            erc20: file.erc20,
+            spl_token: file.spl_token,
+        })
+    }
+}
+
 #[derive(Deserialize)]
 struct File {
     #[serde(rename = "ERC20Resource")]
@@ -43,9 +61,9 @@ struct File {
     spl_token: Vec<CircuitVersion>,
 }
 
-static FILE: LazyLock<File> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../data/circuit-versions.json"))
-        .expect("circuit-versions.json: invalid JSON")
+static FILE: LazyLock<CircuitVersions> = LazyLock::new(|| {
+    CircuitVersions::from_json(include_str!("../data/circuit-versions.json"))
+        .unwrap_or_else(|error| panic!("circuit-versions.json: {error}"))
 });
 
 /// The listed ERC20 circuit versions, in file order.

@@ -20,7 +20,7 @@ use common::own_kind;
 use k256::EncodedPoint;
 use risc0_zkvm::Digest;
 use risc0_zkvm::sha::{Impl, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A kind, written as its `(logic_ref, label_ref)`.
 type Kind = (Digest, Digest);
@@ -514,4 +514,39 @@ fn aliases_lists_only_the_entries_assigned_another_kind() {
     };
     let tree = Tree::new(vec![own_kind(1), alias.clone()]).unwrap();
     assert_eq!(tree.aliases(), [&alias]);
+}
+
+/// Roots in the format of `roots.json`, one for each chain in the given order, with the `_comment` that names the chain.
+/// A chain may come twice, which `json!` cannot write.
+fn roots_json(chains: &[&Caip2ChainId]) -> String {
+    let root = Digest::from_bytes([1; 32]);
+    let chains: Vec<String> = chains
+        .iter()
+        .map(|chain| {
+            format!(
+                "{:?}: {}",
+                chain.to_string(),
+                serde_json::json!({ "_comment": "the chain name", "root": root.to_string() })
+            )
+        })
+        .collect();
+    format!("{{{}}}", chains.join(", "))
+}
+
+#[test]
+fn roots_from_json_reads_the_root_of_each_chain() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    assert_eq!(
+        roots_from_json(&roots_json(&[&sepolia])).unwrap(),
+        BTreeMap::from([(sepolia, Digest::from_bytes([1; 32]))])
+    );
+}
+
+#[test]
+fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
+    let unknown = Caip2ChainId::eip155(u64::MAX);
+    assert!(matches!(
+        roots_from_json(&roots_json(&[&unknown])),
+        Err(Error::UnknownChain(chain)) if chain == unknown
+    ));
 }

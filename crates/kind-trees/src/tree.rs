@@ -2,8 +2,8 @@
 //! `data/generated/<environment>/<namespace>_<reference>.json`, named for the chain's CAIP-2 chain ID; the trees and
 //! roots are embedded and looked up per chain.
 
-use crate::chain::Caip2ChainId;
-use crate::entry::Entry;
+use crate::chain::{Caip2ChainId, Chain};
+use crate::entry::{Entry, hex_digest};
 use crate::error::{Error, Result};
 use crate::root;
 use k256::elliptic_curve::sec1::{FromEncodedPoint, Tag};
@@ -82,25 +82,25 @@ fn is_kind_base(bytes: &[u8]) -> bool {
     })
 }
 
+/// Reads roots in the format of `roots.json`. Rejects a chain that `Chain` does not know.
+pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
+    let recorded: BTreeMap<Caip2ChainId, ChainRoot> =
+        serde_json::from_str(json).map_err(Error::InvalidRootsJson)?;
+    recorded
+        .into_iter()
+        .map(|(id, recorded)| {
+            // A chain that does not resolve is an error: dropping it would drop its freshness check.
+            Chain::try_from(&id)?;
+            Ok((id, recorded.root))
+        })
+        .collect()
+}
+
 /// One chain's recorded root. The `_comment` naming the chain is review context and is not deserialized.
 #[derive(Deserialize)]
 struct ChainRoot {
-    root: String,
-}
-
-fn parse_roots(json: &str) -> BTreeMap<Caip2ChainId, Digest> {
-    use hex::FromHex;
-    let raw: BTreeMap<Caip2ChainId, ChainRoot> =
-        serde_json::from_str(json).expect("roots.json: invalid JSON");
-    raw.into_iter()
-        .map(|(chain, recorded)| {
-            // A chain that fails to resolve must fail loudly: dropping it would erase its freshness assertion.
-            assert!(chain.name().is_some(), "unknown chain: {chain}");
-            let digest = Digest::from_hex(&recorded.root)
-                .unwrap_or_else(|_| panic!("invalid root for {chain}"));
-            (chain, digest)
-        })
-        .collect()
+    #[serde(with = "hex_digest")]
+    root: Digest,
 }
 
 /// Embeds one environment's roots and trees. Each chain is listed as the namespace and reference of its CAIP-2
@@ -112,11 +112,12 @@ macro_rules! environment_module {
             use std::sync::LazyLock;
 
             static ROOTS: LazyLock<BTreeMap<Caip2ChainId, Digest>> = LazyLock::new(|| {
-                parse_roots(include_str!(concat!(
+                roots_from_json(include_str!(concat!(
                     "../data/generated/",
                     stringify!($name),
                     "/roots.json"
                 )))
+                .unwrap_or_else(|error| panic!("{}/roots.json: {error}", stringify!($name)))
             });
 
             static TREES: LazyLock<BTreeMap<Caip2ChainId, Tree>> = LazyLock::new(|| {

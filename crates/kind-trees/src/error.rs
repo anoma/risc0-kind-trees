@@ -15,6 +15,17 @@ pub enum Error {
     InvalidDigest(String),
     #[error("invalid tree JSON: {0}")]
     InvalidTreeJson(#[from] serde_json::Error),
+    #[error("invalid roots JSON: {0}")]
+    InvalidRootsJson(serde_json::Error),
+    #[error("invalid tokens JSON: {0}")]
+    InvalidTokensJson(serde_json::Error),
+    #[error("invalid tokens JSON for {chain}: {reason}")]
+    InvalidTokenSection {
+        chain: Caip2ChainId,
+        reason: serde_json::Error,
+    },
+    #[error("invalid circuit versions JSON: {0}")]
+    InvalidCircuitVersionsJson(serde_json::Error),
     #[error("the kind ({logic_ref}, {label_ref}) is listed twice")]
     DuplicateKind {
         logic_ref: Digest,
