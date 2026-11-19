@@ -130,7 +130,7 @@ fn domain(
     let active = circuits::check(circuits)?;
     let point = kind::point(&active.logic_ref, &label_ref);
     let active_kind = AliasOf {
-        version: active.version.clone(),
+        version: active.version.to_string(),
         logic_ref: active.logic_ref,
         label_ref,
     };
@@ -161,7 +161,7 @@ fn member(
         Status::Deprecated
     };
     Entry {
-        metadata: Some(metadata(circuit.version.clone(), status, alias_of)),
+        metadata: Some(metadata(circuit.version.to_string(), status, alias_of)),
         logic_ref: circuit.logic_ref,
         label_ref,
         kind_base: domain_kind_base.to_vec(),

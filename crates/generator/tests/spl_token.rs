@@ -23,13 +23,13 @@ fn spl_token_entries_makes_each_deprecated_version_an_alias_under_the_mint_label
         spl_token_entries(std::slice::from_ref(&token), &circuits, forwarder).unwrap(),
         [Entry {
             metadata: Some(Metadata::SplToken {
-                version: deprecated.version.clone(),
+                version: deprecated.version.to_string(),
                 name: token.symbol,
                 mint: token.mint,
                 forwarder,
                 status: Status::Deprecated,
                 alias_of: Some(AliasOf {
-                    version: active.version.clone(),
+                    version: active.version.to_string(),
                     logic_ref: active.logic_ref,
                     label_ref,
                 }),

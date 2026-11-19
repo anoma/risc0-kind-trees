@@ -164,7 +164,7 @@ fn check_member(
             );
             assert_eq!(
                 (&alias_of.version, alias_of.logic_ref, alias_of.label_ref),
-                (&active.version, active.logic_ref, active_label),
+                (&active.version.to_string(), active.logic_ref, active_label),
                 "{context}: alias_of does not name the active version under the environment's forwarder"
             );
         }

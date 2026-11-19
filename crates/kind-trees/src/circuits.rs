@@ -30,7 +30,7 @@ pub enum Status {
 #[serde(from = "CircuitVersionJson")]
 pub struct CircuitVersion {
     /// The circuit's release version. The crate that ships it can carry another version.
-    pub version: String,
+    pub version: semver::Version,
     /// The circuit's verifying key, which every resource of this version carries as its logic ref.
     pub logic_ref: Digest,
     pub status: Status,
@@ -60,7 +60,7 @@ impl CircuitVersions {
 #[serde(deny_unknown_fields)]
 struct CircuitVersionJson {
     _comment: Option<String>,
-    version: String,
+    version: semver::Version,
     #[serde_as(as = "Hex")]
     logic_ref: Digest,
     status: Status,
@@ -127,7 +127,6 @@ pub fn spl_token_version(logic_ref: &Digest) -> Option<&'static CircuitVersion> 
 pub fn check(versions: &[CircuitVersion]) -> Result<&CircuitVersion> {
     let mut seen_versions = BTreeSet::new();
     let mut seen_refs = BTreeMap::new();
-    let mut parsed = Vec::new();
     for circuit in versions {
         if !seen_versions.insert(&circuit.version) {
             return Err(Error::DuplicateCircuitVersion(circuit.version.clone()));
@@ -139,26 +138,19 @@ pub fn check(versions: &[CircuitVersion]) -> Result<&CircuitVersion> {
                 second: circuit.version.clone(),
             });
         }
-        let version = semver::Version::parse(&circuit.version).map_err(|reason| {
-            Error::InvalidCircuitVersion {
-                version: circuit.version.clone(),
-                reason,
-            }
-        })?;
-        parsed.push((version, circuit));
     }
-    let mut actives = parsed
+    let mut actives = versions
         .iter()
-        .filter(|(_, circuit)| circuit.status == Status::Active);
-    let (active_version, active) = actives.next().ok_or(Error::NoActiveCircuitVersion)?;
-    if let Some((_, second)) = actives.next() {
+        .filter(|circuit| circuit.status == Status::Active);
+    let active = actives.next().ok_or(Error::NoActiveCircuitVersion)?;
+    if let Some(second) = actives.next() {
         return Err(Error::TwoActiveCircuitVersions {
             first: active.version.clone(),
             second: second.version.clone(),
         });
     }
-    if let Some((highest_version, highest)) = parsed.iter().max_by_key(|(version, _)| version)
-        && highest_version > active_version
+    if let Some(highest) = versions.iter().max_by_key(|circuit| &circuit.version)
+        && highest.version > active.version
     {
         return Err(Error::ActiveCircuitVersionNotHighest {
             active: active.version.clone(),

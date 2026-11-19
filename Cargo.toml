@@ -34,7 +34,7 @@ hex = "0.4.3"
 k256 = { version = "0.13.3", features = ["arithmetic", "hash2curve"] }
 risc0-zkvm = { version = "3.1.0", default-features = false }
 rstest = "0.28.0"
-semver = "1.0.27"
+semver = { version = "1.0.27", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 serde_with = { version = "3.24.0", features = ["hex"] }
