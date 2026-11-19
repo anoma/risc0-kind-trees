@@ -128,7 +128,7 @@ fn check_member(
     active_label: Digest,
     status: Status,
 ) {
-    let domain = kind::point(&active.logic_ref, &active_label).expect("a kind derives");
+    let domain = kind::point(&active.logic_ref, &active_label);
     assert_eq!(
         entry.kind_base, domain,
         "{context}: a member is not assigned its fungibility domain's kind base"
@@ -164,7 +164,7 @@ fn check_member(
             );
             assert_eq!(
                 (&alias_of.version, alias_of.logic_ref, alias_of.label_ref),
-                (&active.version, active.logic_ref, active_label),
+                (&active.version.to_string(), active.logic_ref, active_label),
                 "{context}: alias_of does not name the active version under the environment's forwarder"
             );
         }
@@ -227,59 +227,6 @@ fn token_entries_share_their_fungibility_domains_kind_base() {
             }
         }
     }
-}
-
-/// A token's active kind has an entry if and only if the token asks for a precomputed kind base. Without the entry, the
-/// circuit computes the same kind base by hash to curve.
-#[test]
-fn a_token_has_an_active_entry_if_and_only_if_it_asks_for_a_precomputed_kind_base() {
-    let mut checked = 0;
-    for (module, environment, trees) in [
-        ("staging", Environment::Staging, staging::trees()),
-        ("production", Environment::Production, production::trees()),
-    ] {
-        for (chain, tree) in trees {
-            let context = format!("{module} {chain}");
-            let known = Chain::try_from(chain).unwrap_or_else(|error| panic!("{context}: {error}"));
-            // (symbol, active kind, whether the token asks for a precomputed kind base)
-            let tokens: Vec<(&str, (Digest, Digest), bool)> = match known {
-                Chain::Evm(named) => match erc20_forwarder_address(environment, &named) {
-                    Some(forwarder) => anoma_risc0_kind_trees::tokens::on(named)
-                        .iter()
-                        .map(|token| {
-                            let label_ref = kind::erc20_label_ref(&forwarder, &token.address);
-                            let active = (circuits::erc20_active().logic_ref, label_ref);
-                            (token.symbol.as_str(), active, token.precompute_kind_base)
-                        })
-                        .collect(),
-                    None => Vec::new(),
-                },
-                Chain::Solana(cluster) => match spl_forwarder(environment, cluster) {
-                    Some(forwarder) => anoma_risc0_kind_trees::tokens::spl_on(cluster)
-                        .iter()
-                        .map(|token| {
-                            let label_ref = kind::spl_token_label_ref(&forwarder, &token.mint);
-                            let active = (circuits::spl_token_active().logic_ref, label_ref);
-                            (token.symbol.as_str(), active, token.precompute_kind_base)
-                        })
-                        .collect(),
-                    None => Vec::new(),
-                },
-            };
-            for (symbol, active, asks) in tokens {
-                let listed = tree
-                    .entries()
-                    .iter()
-                    .any(|entry| (entry.logic_ref, entry.label_ref) == active);
-                assert_eq!(
-                    listed, asks,
-                    "{context}: {symbol} has an active entry if and only if it asks for a precomputed kind base"
-                );
-                checked += 1;
-            }
-        }
-    }
-    assert!(checked > 0, "the trees carry a token to check");
 }
 
 /// Every kind besides the generic call kind is a token member the rules call for: no unsupported token, no
@@ -504,16 +451,6 @@ fn from_json_rejects_a_kind_listed_twice() {
         Tree::from_json(&json),
         Err(Error::DuplicateKind { .. })
     ));
-}
-
-#[test]
-fn aliases_lists_only_the_entries_assigned_another_kind() {
-    let alias = Entry {
-        kind_base: own_kind(2).kind_base,
-        ..own_kind(3)
-    };
-    let tree = Tree::new(vec![own_kind(1), alias.clone()]).unwrap();
-    assert_eq!(tree.aliases(), [&alias]);
 }
 
 /// A root in the format of `roots.json`, with the `_comment` that names its chain.

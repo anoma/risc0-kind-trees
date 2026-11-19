@@ -43,20 +43,20 @@ fn erc20_entries_makes_each_deprecated_version_an_alias_of_the_active_version() 
         erc20_entries(std::slice::from_ref(&token), &circuits, forwarder(), None).unwrap(),
         [Entry {
             metadata: Some(Metadata::Erc20 {
-                version: deprecated.version.clone(),
+                version: deprecated.version.to_string(),
                 name: token.symbol,
                 token: token.address,
                 forwarder: forwarder(),
                 status: Status::Deprecated,
                 alias_of: Some(AliasOf {
-                    version: active.version.clone(),
+                    version: active.version.to_string(),
                     logic_ref: active.logic_ref,
                     label_ref,
                 }),
             }),
             logic_ref: deprecated.logic_ref,
             label_ref,
-            kind_base: kind::point(&active.logic_ref, &label_ref).unwrap(),
+            kind_base: kind::point(&active.logic_ref, &label_ref),
         }]
     );
 }
@@ -110,8 +110,7 @@ fn erc20_entries_adds_the_legacy_member_only_for_a_token_that_soft_migrates() {
     let domain_kind_base = kind::point(
         &active.logic_ref,
         &kind::erc20_label_ref(&forwarder(), &address),
-    )
-    .unwrap();
+    );
 
     let staying = erc20_entries(
         &[token(false, false)],

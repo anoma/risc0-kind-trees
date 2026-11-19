@@ -7,25 +7,30 @@ use crate::solana::SolanaAddress;
 use alloy::primitives::Address;
 use risc0_zkvm::Digest;
 use serde::{Deserialize, Serialize};
+use serde_with::hex::Hex;
+use serde_with::{DisplayFromStr, serde_as};
 
 /// A kind, written as its `(logic_ref, label_ref)`, and the kind base it is assigned.
+#[serde_as]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Entry {
     /// Review context for the entry; not covered by the root.
     #[serde(rename = "_metadata", default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Metadata>,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     pub logic_ref: Digest,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     pub label_ref: Digest,
     /// The assigned kind base, SEC1-encoded and uncompressed (65 bytes).
-    #[serde(with = "hex_bytes")]
+    #[serde_as(as = "Hex")]
     pub kind_base: Vec<u8>,
 }
 
 /// What a kind belongs to: the circuit version behind `logic_ref`, and the deployment behind `label_ref`.
-/// The root covers none of it, so it stays free to carry whatever a reviewer needs.
+/// The root covers none of it, so it stays free to carry whatever a reviewer needs. Addresses are written with the
+/// EIP-55 checksum, as `Display` writes them, so a reviewer can paste one into a block explorer.
+#[serde_as]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum Metadata {
@@ -36,9 +41,9 @@ pub enum Metadata {
     Erc20 {
         version: String,
         name: String,
-        #[serde(with = "checksummed")]
+        #[serde_as(as = "DisplayFromStr")]
         token: Address,
-        #[serde(with = "checksummed")]
+        #[serde_as(as = "DisplayFromStr")]
         forwarder: Address,
         /// `active` if and only if `alias_of` is absent: the backend creates only that member's resources.
         status: Status,
@@ -51,7 +56,7 @@ pub enum Metadata {
     #[serde(rename = "GenericCallResource")]
     GenericCall {
         version: String,
-        #[serde(with = "checksummed")]
+        #[serde_as(as = "DisplayFromStr")]
         forwarder: Address,
     },
     /// One supported SPL token mint behind the Solana token forwarder program. The same fungibility-domain
@@ -70,7 +75,7 @@ pub enum Metadata {
 }
 
 impl Metadata {
-    /// The kind an ERC20 alias takes its kind base from; `None` for every other entry.
+    /// The kind an alias takes its kind base from; `None` for every other entry.
     pub fn alias_of(&self) -> Option<&AliasOf> {
         match self {
             Self::Erc20 { alias_of, .. } | Self::SplToken { alias_of, .. } => alias_of.as_ref(),
@@ -81,13 +86,14 @@ impl Metadata {
 
 /// The kind an alias takes its kind base from: the active circuit version under the label of the environment's
 /// forwarder. Written into `_metadata`, so an alias says what it is a second name for.
+#[serde_as]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AliasOf {
     pub version: String,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     pub logic_ref: Digest,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     pub label_ref: Digest,
 }
 
@@ -104,7 +110,7 @@ impl Entry {
     /// place it can come from. Generic call and the active version under the label of the environment's forwarder
     /// are not.
     pub fn is_alias(&self) -> bool {
-        !kind::point(&self.logic_ref, &self.label_ref).is_ok_and(|point| point == self.kind_base)
+        kind::point(&self.logic_ref, &self.label_ref) != self.kind_base
     }
 }
 
@@ -117,48 +123,5 @@ impl From<&Entry> for anoma_rm_risc0::compliance::KindTreeEntry {
             label_ref: entry.label_ref,
             kind_base: entry.kind_base.clone(),
         }
-    }
-}
-
-pub(crate) mod hex_digest {
-    use hex::FromHex;
-    use risc0_zkvm::Digest;
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(digest: &Digest, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&hex::encode(digest.as_bytes()))
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Digest, D::Error> {
-        let string = String::deserialize(deserializer)?;
-        Digest::from_hex(&string).map_err(serde::de::Error::custom)
-    }
-}
-
-mod hex_bytes {
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&hex::encode(bytes))
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u8>, D::Error> {
-        let string = String::deserialize(deserializer)?;
-        hex::decode(&string).map_err(serde::de::Error::custom)
-    }
-}
-
-/// Addresses are written checksummed, so a reviewer can paste one into a block explorer.
-mod checksummed {
-    use alloy::primitives::Address;
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(address: &Address, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&address.to_checksum(None))
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Address, D::Error> {
-        let string = String::deserialize(deserializer)?;
-        string.parse().map_err(serde::de::Error::custom)
     }
 }

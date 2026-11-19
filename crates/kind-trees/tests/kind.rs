@@ -37,7 +37,7 @@ fn point_is_an_uncompressed_sec1_curve_point() {
     use k256::elliptic_curve::sec1::FromEncodedPoint;
     use k256::{EncodedPoint, ProjectivePoint};
 
-    let point = point(&Digest::default(), &Digest::default()).unwrap();
+    let point = point(&Digest::default(), &Digest::default());
     assert_eq!(point.len(), 65);
     assert_eq!(point[0], 0x04, "the SEC1 tag of an uncompressed point");
     let encoded = EncodedPoint::from_bytes(&point).unwrap();

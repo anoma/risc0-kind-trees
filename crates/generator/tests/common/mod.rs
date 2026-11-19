@@ -7,12 +7,12 @@ use risc0_zkvm::Digest;
 pub fn circuits() -> Vec<CircuitVersion> {
     vec![
         CircuitVersion {
-            version: "1.0.0".into(),
+            version: "1.0.0".parse().unwrap(),
             logic_ref: Digest::from_bytes([1; 32]),
             status: Status::Deprecated,
         },
         CircuitVersion {
-            version: "2.0.0".into(),
+            version: "2.0.0".parse().unwrap(),
             logic_ref: Digest::from_bytes([2; 32]),
             status: Status::Active,
         },

@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 /// A circuit version whose logic ref differs from that of each version with another `seed`.
 fn circuit(version: &str, seed: u8, status: Status) -> CircuitVersion {
     CircuitVersion {
-        version: version.into(),
+        version: version.parse().expect("a semantic version"),
         logic_ref: Digest::from_bytes([seed; 32]),
         status,
     }
@@ -73,7 +73,7 @@ fn check_rejects_a_version_listed_twice() {
     ];
     assert!(matches!(
         check(&list),
-        Err(Error::DuplicateCircuitVersion(version)) if version == "1.0.0"
+        Err(Error::DuplicateCircuitVersion(version)) if version == list[0].version
     ));
 }
 
@@ -86,16 +86,7 @@ fn check_rejects_a_logic_ref_listed_twice() {
     assert!(matches!(
         check(&list),
         Err(Error::DuplicateCircuitLogicRef { logic_ref, first, second })
-            if logic_ref == list[0].logic_ref && first == "1.0.0" && second == "2.0.0"
-    ));
-}
-
-#[test]
-fn check_rejects_a_version_that_is_not_a_semantic_version() {
-    let list = [circuit("v2.0.0", 1, Status::Active)];
-    assert!(matches!(
-        check(&list),
-        Err(Error::InvalidCircuitVersion { version, .. }) if version == "v2.0.0"
+            if logic_ref == list[0].logic_ref && first == list[0].version && second == list[1].version
     ));
 }
 
@@ -113,7 +104,8 @@ fn check_rejects_a_second_active_version() {
     ];
     assert!(matches!(
         check(&list),
-        Err(Error::TwoActiveCircuitVersions { first, second }) if first == "1.0.0" && second == "2.0.0"
+        Err(Error::TwoActiveCircuitVersions { first, second })
+            if first == list[0].version && second == list[1].version
     ));
 }
 
@@ -126,7 +118,7 @@ fn check_rejects_an_active_version_below_a_listed_version() {
     assert!(matches!(
         check(&list),
         Err(Error::ActiveCircuitVersionNotHighest { active, highest })
-            if active == "1.0.0" && highest == "2.0.0"
+            if active == list[0].version && highest == list[1].version
     ));
 }
 
@@ -171,4 +163,16 @@ fn circuit_versions_from_json_rejects_an_unknown_list() {
         Err(Error::InvalidJson(error))
             if error.to_string().contains("unknown field `GenericCallResource`")
     ));
+}
+
+#[test]
+fn circuit_versions_from_json_rejects_a_version_that_is_not_a_semantic_version() {
+    let mut file = file();
+    file["ERC20Resource"][0]["version"] = "v1.0.0".into();
+    let error = CircuitVersions::from_json(&file.to_string()).unwrap_err();
+    assert!(matches!(error, Error::InvalidJson(_)), "{error}");
+    assert!(
+        error.to_string().contains("major version number"),
+        "{error}"
+    );
 }

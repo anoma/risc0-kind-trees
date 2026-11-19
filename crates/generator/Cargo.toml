@@ -22,7 +22,7 @@ anomapay-erc20-forwarder-bindings = { workspace = true }
 anomapay-spl-token-forwarder-client = { workspace = true }
 anomapay_erc20_library = { workspace = true }
 anyhow = { workspace = true }
-hex = { workspace = true }
+cargo_metadata = { workspace = true }
 risc0-zkvm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

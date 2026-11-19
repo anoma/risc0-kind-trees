@@ -42,12 +42,13 @@ fn staging_records_the_devnet_programs_and_production_none() {
 #[test]
 fn the_solana_trees_are_the_recorded_adapters_clusters() {
     for (environment, chains) in [
-        (Environment::Staging, staging::chains()),
-        (Environment::Production, production::chains()),
+        (Environment::Staging, staging::roots()),
+        (Environment::Production, production::roots()),
     ] {
         let trees: Vec<Caip2ChainId> = chains
-            .into_iter()
+            .keys()
             .filter(|chain| chain.namespace() == Caip2ChainId::SOLANA)
+            .cloned()
             .collect();
         let mut recorded: Vec<Caip2ChainId> = protocol_adapter_deployments_map(environment)
             .into_iter()

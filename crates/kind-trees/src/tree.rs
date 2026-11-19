@@ -3,15 +3,16 @@
 //! roots are embedded and looked up per chain.
 
 use crate::chain::{self, Caip2ChainId, Chain};
-use crate::entry::{Entry, hex_digest};
+use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::root;
 use k256::elliptic_curve::sec1::{FromEncodedPoint, Tag};
 use k256::{AffinePoint, EncodedPoint};
 use risc0_zkvm::Digest;
 use serde::Deserialize;
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use std::collections::BTreeMap;
-use std::path::Path;
 
 /// One chain's kind tree: its entries in key order, each kind listed once with a kind base the resource machine
 /// accepts.
@@ -48,11 +49,6 @@ impl Tree {
         Self::new(serde_json::from_str(json)?)
     }
 
-    /// Reads a tree from a generated `<namespace>_<reference>.json` file.
-    pub fn load(path: impl AsRef<Path>) -> Result<Self> {
-        Self::from_json(&std::fs::read_to_string(path)?)
-    }
-
     /// The entries, in key order.
     pub fn entries(&self) -> &[Entry] {
         &self.entries
@@ -61,15 +57,6 @@ impl Tree {
     /// The root over the entries.
     pub fn root(&self) -> Digest {
         root::of(&self.entries)
-    }
-
-    /// The aliases: the entries assigned another kind as their kind base. Only the tree can express them, and they
-    /// are the review surface.
-    pub fn aliases(&self) -> Vec<&Entry> {
-        self.entries
-            .iter()
-            .filter(|entry| entry.is_alias())
-            .collect()
     }
 }
 
@@ -97,11 +84,12 @@ pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
 }
 
 /// One chain's recorded root. The `_comment` that names the chain is review context.
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ChainRoot {
     _comment: Option<String>,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     root: Digest,
 }
 
@@ -142,11 +130,6 @@ macro_rules! environment_module {
                 )),*];
                 trees.into_iter().collect()
             });
-
-            /// The chains this environment records a tree for.
-            pub fn chains() -> Vec<Caip2ChainId> {
-                ROOTS.keys().cloned().collect()
-            }
 
             /// The roots of all recorded chains.
             pub fn roots() -> &'static BTreeMap<Caip2ChainId, Digest> {
