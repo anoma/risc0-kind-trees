@@ -55,28 +55,24 @@ impl Tokens {
     /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice, a chain that `Chain` does not know, a
     /// token listed twice on a chain, and a field that the format does not have.
     pub fn from_json(json: &str) -> Result<Self> {
-        let sections: BTreeMap<Caip2ChainId, serde_json::Value> =
-            chain::by_chain_from_json(json).map_err(Error::InvalidTokensJson)?;
-        let mut tokens = Self {
-            erc20: BTreeMap::new(),
-            spl: BTreeMap::new(),
-        };
+        let sections: BTreeMap<Caip2ChainId, serde_json::Value> = chain::by_chain_from_json(json)?;
+        let (mut erc20, mut spl) = (BTreeMap::new(), BTreeMap::new());
         for (id, section) in sections {
             // A chain that does not resolve is an error: dropping it would drop its kinds.
             match Chain::try_from(&id)? {
                 Chain::Evm(_) => {
                     let listed =
                         section_tokens(&id, section, |token: &Token| token.address.to_string())?;
-                    tokens.erc20.insert(id, listed);
+                    erc20.insert(id, listed);
                 }
                 Chain::Solana(cluster) => {
                     let listed =
                         section_tokens(&id, section, |token: &SplToken| token.mint.to_string())?;
-                    tokens.spl.insert(cluster, listed);
+                    spl.insert(cluster, listed);
                 }
             }
         }
-        Ok(tokens)
+        Ok(Self { erc20, spl })
     }
 }
 

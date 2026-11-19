@@ -1,7 +1,12 @@
+mod common;
+
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::tokens::*;
 use anoma_risc0_kind_trees::{Caip2ChainId, Error, SolanaCluster};
+use common::by_chain;
 use serde_json::{Value, json};
+
+const DEVNET_MINT: &str = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
 
 fn sepolia() -> Caip2ChainId {
     "eip155:11155111".parse().unwrap()
@@ -37,24 +42,12 @@ fn section(tokens: Vec<Value>) -> Value {
     json!({ "_comment": "the chain name", "tokens": tokens })
 }
 
-/// One section for each chain, in the given order. A chain may come twice, which `json!` cannot write.
-fn list(sections: &[(&Caip2ChainId, &Value)]) -> String {
-    let sections: Vec<String> = sections
-        .iter()
-        .map(|(chain, section)| format!("{:?}: {section}", chain.to_string()))
-        .collect();
-    format!("{{{}}}", sections.join(", "))
-}
-
 #[test]
 fn the_embedded_list_carries_the_devnet_test_mint_under_its_caip2_key() {
     let [token] = spl_on(SolanaCluster::Devnet) else {
         panic!("expected exactly one supported mint on solana-devnet");
     };
-    assert_eq!(
-        token.mint.to_string(),
-        "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr"
-    );
+    assert_eq!(token.mint.to_string(), DEVNET_MINT);
     assert_eq!(token.decimals, 6);
     assert!(
         on(SolanaCluster::Devnet).is_empty(),
@@ -72,23 +65,24 @@ fn on_lists_no_token_for_a_chain_without_a_section() {
 #[test]
 fn from_json_reads_each_section_as_the_token_type_of_its_chain_family() {
     let address = Address::repeat_byte(0xab).to_string();
-    let mint = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
-    let tokens = Tokens::from_json(&list(&[
+    let tokens = Tokens::from_json(&by_chain(&[
         (&sepolia(), &section(vec![erc20_token(&address)])),
-        (&devnet(), &section(vec![spl_token(mint)])),
+        (&devnet(), &section(vec![spl_token(DEVNET_MINT)])),
     ]))
     .unwrap();
     assert_eq!(tokens.erc20[&sepolia()][0].address.to_string(), address);
-    assert_eq!(tokens.spl[&SolanaCluster::Devnet][0].mint.to_string(), mint);
+    assert_eq!(
+        tokens.spl[&SolanaCluster::Devnet][0].mint.to_string(),
+        DEVNET_MINT
+    );
 }
 
 #[test]
 fn from_json_rejects_a_chain_listed_twice() {
     let empty = section(Vec::new());
-    assert!(Tokens::from_json(&list(&[(&sepolia(), &empty)])).is_ok());
     assert!(matches!(
-        Tokens::from_json(&list(&[(&sepolia(), &empty), (&sepolia(), &empty)])),
-        Err(Error::InvalidTokensJson(error)) if error.to_string().contains("duplicate key")
+        Tokens::from_json(&by_chain(&[(&sepolia(), &empty), (&sepolia(), &empty)])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("duplicate key")
     ));
 }
 
@@ -96,7 +90,7 @@ fn from_json_rejects_a_chain_listed_twice() {
 fn from_json_rejects_a_chain_that_chain_does_not_know() {
     let unknown = Caip2ChainId::eip155(u64::MAX);
     assert!(matches!(
-        Tokens::from_json(&list(&[(&unknown, &section(Vec::new()))])),
+        Tokens::from_json(&by_chain(&[(&unknown, &section(Vec::new()))])),
         Err(Error::UnknownChain(chain)) if chain == unknown
     ));
 }
@@ -115,18 +109,17 @@ fn from_json_rejects_a_token_listed_twice_on_a_chain() {
         erc20_token(&address.to_lowercase()),
     ]);
     assert!(matches!(
-        Tokens::from_json(&list(&[(&sepolia(), &twice)])),
+        Tokens::from_json(&by_chain(&[(&sepolia(), &twice)])),
         Err(Error::DuplicateToken { chain, token }) if chain == sepolia() && token == address
     ));
 }
 
 #[test]
 fn from_json_rejects_a_mint_listed_twice_on_a_cluster() {
-    let mint = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
-    let twice = section(vec![spl_token(mint), spl_token(mint)]);
+    let twice = section(vec![spl_token(DEVNET_MINT), spl_token(DEVNET_MINT)]);
     assert!(matches!(
-        Tokens::from_json(&list(&[(&devnet(), &twice)])),
-        Err(Error::DuplicateToken { chain, token }) if chain == devnet() && token == mint
+        Tokens::from_json(&by_chain(&[(&devnet(), &twice)])),
+        Err(Error::DuplicateToken { chain, token }) if chain == devnet() && token == DEVNET_MINT
     ));
 }
 
@@ -135,7 +128,7 @@ fn from_json_rejects_an_unknown_field_of_a_section() {
     let mut extra = section(Vec::new());
     extra["chain"] = "sepolia".into();
     assert!(matches!(
-        Tokens::from_json(&list(&[(&sepolia(), &extra)])),
+        Tokens::from_json(&by_chain(&[(&sepolia(), &extra)])),
         Err(Error::InvalidTokenSection { chain, reason })
             if chain == sepolia() && reason.to_string().contains("unknown field `chain`")
     ));
@@ -145,17 +138,16 @@ fn from_json_rejects_an_unknown_field_of_a_section() {
 /// the mint of an ERC20 token.
 #[test]
 fn from_json_rejects_a_field_that_the_token_type_does_not_have() {
-    let mint = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
-    let mut spl = spl_token(mint);
+    let mut spl = spl_token(DEVNET_MINT);
     spl["soft_migrate_from_legacy_forwarder"] = true.into();
     let mut erc20 = erc20_token(&Address::repeat_byte(0xab).to_string());
-    erc20["mint"] = mint.into();
+    erc20["mint"] = DEVNET_MINT.into();
     for (chain, token, field) in [
         (devnet(), spl, "soft_migrate_from_legacy_forwarder"),
         (sepolia(), erc20, "mint"),
     ] {
         assert!(matches!(
-            Tokens::from_json(&list(&[(&chain, &section(vec![token]))])),
+            Tokens::from_json(&by_chain(&[(&chain, &section(vec![token]))])),
             Err(Error::InvalidTokenSection { chain: failed, reason })
                 if failed == chain && reason.to_string().contains(&format!("unknown field `{field}`"))
         ));

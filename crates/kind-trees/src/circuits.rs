@@ -35,33 +35,22 @@ pub struct CircuitVersion {
     pub status: Status,
 }
 
-/// The listed circuit versions of each resource type, in file order.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The listed circuit versions of each resource type, in file order. The `_comment` is review context.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CircuitVersions {
+    _comment: Option<String>,
+    #[serde(rename = "ERC20Resource")]
     pub erc20: Vec<CircuitVersion>,
+    #[serde(rename = "SPLTokenResource")]
     pub spl_token: Vec<CircuitVersion>,
 }
 
 impl CircuitVersions {
     /// Reads lists in the format of `circuit-versions.json`. Rejects a field that the format does not have.
     pub fn from_json(json: &str) -> Result<Self> {
-        let file: File = serde_json::from_str(json).map_err(Error::InvalidCircuitVersionsJson)?;
-        Ok(Self {
-            erc20: file.erc20,
-            spl_token: file.spl_token,
-        })
+        Ok(serde_json::from_str(json)?)
     }
-}
-
-/// The file's form. The `_comment` is review context.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct File {
-    _comment: Option<String>,
-    #[serde(rename = "ERC20Resource")]
-    erc20: Vec<CircuitVersion>,
-    #[serde(rename = "SPLTokenResource")]
-    spl_token: Vec<CircuitVersion>,
 }
 
 /// A circuit version's form in the file. The `_comment` is review context.
@@ -76,11 +65,18 @@ struct CircuitVersionJson {
 }
 
 impl From<CircuitVersionJson> for CircuitVersion {
-    fn from(json: CircuitVersionJson) -> Self {
+    fn from(
+        CircuitVersionJson {
+            version,
+            logic_ref,
+            status,
+            ..
+        }: CircuitVersionJson,
+    ) -> Self {
         Self {
-            version: json.version,
-            logic_ref: json.logic_ref,
-            status: json.status,
+            version,
+            logic_ref,
+            status,
         }
     }
 }

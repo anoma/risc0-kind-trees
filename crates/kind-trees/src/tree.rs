@@ -85,8 +85,7 @@ fn is_kind_base(bytes: &[u8]) -> bool {
 /// Reads roots in the format of `roots.json`. Rejects a chain listed twice, a chain that `Chain` does not know, and a
 /// field that the format does not have.
 pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
-    let recorded: BTreeMap<Caip2ChainId, ChainRoot> =
-        chain::by_chain_from_json(json).map_err(Error::InvalidRootsJson)?;
+    let recorded: BTreeMap<Caip2ChainId, ChainRoot> = chain::by_chain_from_json(json)?;
     recorded
         .into_iter()
         .map(|(id, recorded)| {

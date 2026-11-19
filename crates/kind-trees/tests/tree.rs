@@ -16,7 +16,7 @@ use anomapay_erc20_forwarder_bindings::addresses::{
 use anomapay_spl_token_forwarder_client::addresses::{
     Environment as SolanaEnvironment, spl_token_forwarder_address,
 };
-use common::own_kind;
+use common::{by_chain, own_kind};
 use k256::EncodedPoint;
 use risc0_zkvm::Digest;
 use risc0_zkvm::sha::{Impl, Sha256};
@@ -516,28 +516,16 @@ fn aliases_lists_only_the_entries_assigned_another_kind() {
     assert_eq!(tree.aliases(), [&alias]);
 }
 
-/// Roots in the format of `roots.json`, one for each chain in the given order, with the `_comment` that names the chain.
-/// A chain may come twice, which `json!` cannot write.
-fn roots_json(chains: &[&Caip2ChainId]) -> String {
-    let root = Digest::from_bytes([1; 32]);
-    let chains: Vec<String> = chains
-        .iter()
-        .map(|chain| {
-            format!(
-                "{:?}: {}",
-                chain.to_string(),
-                serde_json::json!({ "_comment": "the chain name", "root": root.to_string() })
-            )
-        })
-        .collect();
-    format!("{{{}}}", chains.join(", "))
+/// A root in the format of `roots.json`, with the `_comment` that names its chain.
+fn chain_root() -> serde_json::Value {
+    serde_json::json!({ "_comment": "the chain name", "root": Digest::from_bytes([1; 32]).to_string() })
 }
 
 #[test]
 fn roots_from_json_reads_the_root_of_each_chain() {
     let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
     assert_eq!(
-        roots_from_json(&roots_json(&[&sepolia])).unwrap(),
+        roots_from_json(&by_chain(&[(&sepolia, &chain_root())])).unwrap(),
         BTreeMap::from([(sepolia, Digest::from_bytes([1; 32]))])
     );
 }
@@ -546,8 +534,8 @@ fn roots_from_json_reads_the_root_of_each_chain() {
 fn roots_from_json_rejects_a_chain_listed_twice() {
     let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
     assert!(matches!(
-        roots_from_json(&roots_json(&[&sepolia, &sepolia])),
-        Err(Error::InvalidRootsJson(error)) if error.to_string().contains("duplicate key")
+        roots_from_json(&by_chain(&[(&sepolia, &chain_root()), (&sepolia, &chain_root())])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("duplicate key")
     ));
 }
 
@@ -555,7 +543,7 @@ fn roots_from_json_rejects_a_chain_listed_twice() {
 fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
     let unknown = Caip2ChainId::eip155(u64::MAX);
     assert!(matches!(
-        roots_from_json(&roots_json(&[&unknown])),
+        roots_from_json(&by_chain(&[(&unknown, &chain_root())])),
         Err(Error::UnknownChain(chain)) if chain == unknown
     ));
 }
@@ -563,9 +551,10 @@ fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
 #[test]
 fn roots_from_json_rejects_an_unknown_field() {
     let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
-    let json = roots_json(&[&sepolia]).replace("\"root\"", "\"block\": 1, \"root\"");
+    let mut root = chain_root();
+    root["block"] = 1.into();
     assert!(matches!(
-        roots_from_json(&json),
-        Err(Error::InvalidRootsJson(error)) if error.to_string().contains("unknown field `block`")
+        roots_from_json(&by_chain(&[(&sepolia, &root)])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("unknown field `block`")
     ));
 }

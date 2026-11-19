@@ -157,7 +157,7 @@ fn circuit_versions_from_json_rejects_an_unknown_field_of_a_version() {
     file["ERC20Resource"][0]["denied"] = true.into();
     assert!(matches!(
         CircuitVersions::from_json(&file.to_string()),
-        Err(Error::InvalidCircuitVersionsJson(error)) if error.to_string().contains("unknown field `denied`")
+        Err(Error::InvalidJson(error)) if error.to_string().contains("unknown field `denied`")
     ));
 }
 
@@ -168,7 +168,7 @@ fn circuit_versions_from_json_rejects_an_unknown_list() {
     file["GenericCallResource"] = json!([]);
     assert!(matches!(
         CircuitVersions::from_json(&file.to_string()),
-        Err(Error::InvalidCircuitVersionsJson(error))
+        Err(Error::InvalidJson(error))
             if error.to_string().contains("unknown field `GenericCallResource`")
     ));
 }
