@@ -53,14 +53,13 @@ impl CircuitVersions {
     }
 }
 
-/// The file's form. The `_comment`s are review context.
+/// The file's form. The `_comment` is review context.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct File {
     _comment: Option<String>,
     #[serde(rename = "ERC20Resource")]
     erc20: Vec<CircuitVersion>,
-    _comment_spl_token: Option<String>,
     #[serde(rename = "SPLTokenResource")]
     spl_token: Vec<CircuitVersion>,
 }

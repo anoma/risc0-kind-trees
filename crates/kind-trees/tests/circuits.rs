@@ -133,14 +133,13 @@ fn check_rejects_an_active_version_below_a_listed_version() {
 /// Lists in the format of `circuit-versions.json`, with a `_comment` at each place the file may carry one.
 fn file() -> Value {
     json!({
-        "_comment": "the ERC20 transfer circuit versions",
+        "_comment": "the circuit versions of each resource type",
         "ERC20Resource": [{
             "_comment": "the circuit that the legacy forwarders accept",
             "version": "1.0.0",
             "logic_ref": Digest::from_bytes([1; 32]).to_string(),
             "status": "active",
         }],
-        "_comment_spl_token": "the SPL token transfer circuit versions",
         "SPLTokenResource": [],
     })
 }
