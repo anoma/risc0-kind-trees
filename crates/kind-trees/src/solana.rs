@@ -1,12 +1,14 @@
 //! A Solana account address: a 32-byte key written in base58, as program ids and mints are written everywhere
 //! on Solana. Kept as bytes here so the library carries no Solana SDK; code that holds an SDK `Pubkey`
 //! converts through the bytes.
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::fmt;
 use std::str::FromStr;
 
 /// A 32-byte Solana address.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct SolanaAddress([u8; 32]);
 
 impl SolanaAddress {
@@ -41,19 +43,5 @@ impl fmt::Display for SolanaAddress {
 impl fmt::Debug for SolanaAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "SolanaAddress({self})")
-    }
-}
-
-impl Serialize for SolanaAddress {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_str(self)
-    }
-}
-
-impl<'de> Deserialize<'de> for SolanaAddress {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        String::deserialize(deserializer)?
-            .parse()
-            .map_err(serde::de::Error::custom)
     }
 }

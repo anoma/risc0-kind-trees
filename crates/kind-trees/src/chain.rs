@@ -6,8 +6,8 @@
 use crate::error::{Error, Result};
 use alloy_chains::NamedChain;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::rust::maps_duplicate_key_is_error;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use solana_cluster_type::ClusterType;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -16,7 +16,9 @@ use std::str::FromStr;
 /// A CAIP-2 chain ID. The namespace is 3 to 8 characters of `a-z`, `0-9` and `-`. The reference is 1 to 32 characters
 /// of `a-z`, `A-Z`, `0-9`, `-` and `_`. An `eip155` reference is the decimal chain ID without a leading zero, so that
 /// one chain has one ID.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct Caip2ChainId {
     namespace: String,
     reference: String,
@@ -117,20 +119,6 @@ impl FromStr for Caip2ChainId {
 impl fmt::Display for Caip2ChainId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.namespace, self.reference)
-    }
-}
-
-impl Serialize for Caip2ChainId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-        serializer.collect_str(self)
-    }
-}
-
-impl<'de> Deserialize<'de> for Caip2ChainId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
-        String::deserialize(deserializer)?
-            .parse()
-            .map_err(serde::de::Error::custom)
     }
 }
 

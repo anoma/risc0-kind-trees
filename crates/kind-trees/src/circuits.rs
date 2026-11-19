@@ -6,10 +6,11 @@
 //! version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it
 //! stays, even when the protocol adapter denies its logic ref, with entries that nothing can use.
 
-use crate::entry::hex_digest;
 use crate::{Error, Result};
 use risc0_zkvm::Digest;
 use serde::{Deserialize, Serialize};
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
@@ -54,12 +55,13 @@ impl CircuitVersions {
 }
 
 /// A circuit version's form in the file. The `_comment` is review context.
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct CircuitVersionJson {
     _comment: Option<String>,
     version: String,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     logic_ref: Digest,
     status: Status,
 }

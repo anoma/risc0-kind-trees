@@ -3,13 +3,15 @@
 //! roots are embedded and looked up per chain.
 
 use crate::chain::{self, Caip2ChainId, Chain};
-use crate::entry::{Entry, hex_digest};
+use crate::entry::Entry;
 use crate::error::{Error, Result};
 use crate::root;
 use k256::elliptic_curve::sec1::{FromEncodedPoint, Tag};
 use k256::{AffinePoint, EncodedPoint};
 use risc0_zkvm::Digest;
 use serde::Deserialize;
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -97,11 +99,12 @@ pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
 }
 
 /// One chain's recorded root. The `_comment` that names the chain is review context.
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ChainRoot {
     _comment: Option<String>,
-    #[serde(with = "hex_digest")]
+    #[serde_as(as = "Hex")]
     root: Digest,
 }
 
