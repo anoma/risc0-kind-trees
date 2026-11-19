@@ -11,14 +11,13 @@ use anoma_risc0_kind_trees::{
 };
 use anoma_risc0_kind_trees_generator::{self as generator, GenericCallCircuit, LegacyForwarder};
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
+use cargo_metadata::{CargoOpt, MetadataCommand};
 use risc0_zkvm::Digest;
 use serde::Serialize;
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 /// One entry of `roots.json`: the chain it belongs to, named for review, and the tree root.
 #[derive(Serialize)]
@@ -79,60 +78,28 @@ struct Versions {
 /// Reads the circuit versions from the resolved dependency graph, so bumping a pin cannot leave a stale
 /// version in the metadata.
 fn versions() -> Result<Versions> {
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-    let output = Command::new(cargo)
-        .args([
-            "metadata",
-            "--format-version",
-            "1",
-            "--locked",
-            "--all-features",
-        ])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .output()
-        .context("failed to run cargo metadata")?;
-    if !output.status.success() {
-        bail!(
-            "cargo metadata: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    let metadata: Value =
-        serde_json::from_slice(&output.stdout).context("cargo metadata output")?;
-
-    let packages = metadata["packages"]
-        .as_array()
-        .context("cargo metadata reported no packages")?;
-    let version_by_id: BTreeMap<&str, &str> = packages
-        .iter()
-        .filter_map(|package| Some((package["id"].as_str()?, package["version"].as_str()?)))
-        .collect();
-
-    // Every package ID in this workspace contains the folder name, so only the manifest path names this package.
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-    let id = packages
-        .iter()
-        .find(|package| package["manifest_path"].as_str().map(Path::new) == Some(&manifest))
-        .and_then(|package| package["id"].as_str())
-        .context("cargo metadata does not list this package")?;
-    let node = metadata["resolve"]["nodes"]
-        .as_array()
-        .context("cargo metadata reported no resolve graph")?
-        .iter()
-        .find(|node| node["id"].as_str() == Some(id))
-        .context("this package is missing from the resolve graph")?;
-
-    let version_of = |lib: &str| -> Result<String> {
-        node["deps"]
-            .as_array()
-            .context("the resolve node carries no dependencies")?
+    let metadata = MetadataCommand::new()
+        .manifest_path(Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml"))
+        .features(CargoOpt::AllFeatures)
+        .other_options(vec!["--locked".to_string()])
+        .exec()
+        .context("cargo metadata")?;
+    let resolve = metadata
+        .resolve
+        .as_ref()
+        .context("cargo metadata reported no resolve graph")?;
+    let root = resolve
+        .root
+        .as_ref()
+        .context("cargo metadata names no root package")?;
+    let version_of = |lib: &str| {
+        resolve[root]
+            .deps
             .iter()
-            .find(|dep| dep["name"].as_str() == Some(lib))
-            .and_then(|dep| version_by_id.get(dep["pkg"].as_str()?).copied())
-            .map(str::to_string)
+            .find(|dep| dep.name == lib)
+            .map(|dep| metadata[&dep.pkg].version.to_string())
             .with_context(|| format!("{lib} is not a resolved dependency"))
     };
-
     Ok(Versions {
         anomapay_erc20: version_of("anomapay_erc20_library")?,
         generic_call: version_of("anoma_generic_call_library")?,

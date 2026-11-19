@@ -1485,6 +1485,7 @@ dependencies = [
  "anomapay-spl-token-forwarder-client",
  "anomapay_erc20_library",
  "anyhow",
+ "cargo_metadata",
  "hex",
  "risc0-zkvm",
  "serde",
