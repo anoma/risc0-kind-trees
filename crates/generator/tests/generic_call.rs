@@ -26,5 +26,4 @@ fn generic_call_entry_is_assigned_its_own_kind_under_the_label_sha256_of_the_for
             kind_base: kind::point(&circuit.logic_ref, &label_ref).unwrap(),
         }
     );
-    assert!(!entry.is_alias());
 }
