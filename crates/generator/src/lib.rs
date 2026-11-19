@@ -4,7 +4,7 @@
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::{
     AliasOf, CircuitVersion, Entry, Error, Metadata, SolanaAddress, SplToken, Status, Token, Tree,
-    kind,
+    circuits, kind,
 };
 use anyhow::{Context, Result};
 use risc0_zkvm::Digest;
@@ -25,7 +25,7 @@ pub struct GenericCallCircuit {
 
 /// The ERC20 entries of a chain: one fungibility domain for each token under the label of `forwarder`, the
 /// forwarder of the environment. For a token that soft-migrates, the logic ref of `legacy` under the label of the
-/// legacy forwarder is one more member. `circuits` lists exactly one active version.
+/// legacy forwarder is one more member. Errors if `circuits` fails `circuits::check`.
 pub fn erc20_entries(
     tokens: &[Token],
     circuits: &[CircuitVersion],
@@ -76,7 +76,7 @@ pub fn erc20_entries(
 }
 
 /// The SPL token entries of a Solana cluster: one fungibility domain for each mint under the label of `forwarder`,
-/// the SPL token forwarder program of the environment. `circuits` lists exactly one active version.
+/// the SPL token forwarder program of the environment. Errors if `circuits` fails `circuits::check`.
 pub fn spl_token_entries(
     tokens: &[SplToken],
     circuits: &[CircuitVersion],
@@ -153,10 +153,7 @@ fn domain(
     metadata: impl Fn(String, Status, Option<AliasOf>) -> Metadata,
     entries: &mut Vec<Entry>,
 ) -> Result<(Vec<u8>, AliasOf)> {
-    let active = circuits
-        .iter()
-        .find(|circuit| circuit.status == Status::Active)
-        .context("no listed circuit version is active")?;
+    let active = circuits::check(circuits)?;
     let point = kind::point(&active.logic_ref, &label_ref)?;
     let active_kind = AliasOf {
         version: active.version.clone(),

@@ -1,7 +1,9 @@
 mod common;
 
 use alloy::primitives::Address;
-use anoma_risc0_kind_trees::{AliasOf, Entry, Metadata, Status, Token, kind};
+use anoma_risc0_kind_trees::{
+    AliasOf, CircuitVersion, Entry, Error, Metadata, Status, Token, kind,
+};
 use anoma_risc0_kind_trees_generator::{LegacyForwarder, erc20_entries};
 use common::{circuits, deprecated_and_active};
 use risc0_zkvm::Digest;
@@ -173,11 +175,19 @@ fn erc20_entries_errors_on_a_legacy_logic_ref_that_no_listed_version_has() {
     assert!(error.to_string().contains(&unlisted.logic_ref.to_string()));
 }
 
+/// Two active versions is a list that still has an active version to build a fungibility domain from.
 #[test]
-fn erc20_entries_errors_on_a_list_without_an_active_version() {
-    let deprecated: Vec<_> = circuits()
+fn erc20_entries_errors_on_a_list_that_fails_the_circuit_checks() {
+    let two_active: Vec<_> = circuits()
         .into_iter()
-        .filter(|circuit| circuit.status == Status::Deprecated)
+        .map(|circuit| CircuitVersion {
+            status: Status::Active,
+            ..circuit
+        })
         .collect();
-    assert!(erc20_entries(&[token(false, false)], &deprecated, forwarder(), None).is_err());
+    let error = erc20_entries(&[token(false, false)], &two_active, forwarder(), None).unwrap_err();
+    assert!(matches!(
+        error.downcast_ref(),
+        Some(Error::TwoActiveCircuitVersions { .. })
+    ));
 }
