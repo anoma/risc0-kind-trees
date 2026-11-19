@@ -82,7 +82,8 @@ fn is_kind_base(bytes: &[u8]) -> bool {
     })
 }
 
-/// Reads roots in the format of `roots.json`. Rejects a chain listed twice and a chain that `Chain` does not know.
+/// Reads roots in the format of `roots.json`. Rejects a chain listed twice, a chain that `Chain` does not know, and a
+/// field that the format does not have.
 pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
     let recorded: BTreeMap<Caip2ChainId, ChainRoot> =
         chain::by_chain_from_json(json).map_err(Error::InvalidRootsJson)?;
@@ -96,9 +97,11 @@ pub fn roots_from_json(json: &str) -> Result<BTreeMap<Caip2ChainId, Digest>> {
         .collect()
 }
 
-/// One chain's recorded root. The `_comment` naming the chain is review context and is not deserialized.
+/// One chain's recorded root. The `_comment` that names the chain is review context.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ChainRoot {
+    _comment: Option<String>,
     #[serde(with = "hex_digest")]
     root: Digest,
 }

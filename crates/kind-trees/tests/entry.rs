@@ -161,3 +161,64 @@ fn spl_token_metadata_round_trips_with_base58_addresses() {
     assert_eq!(json.get("alias_of"), None);
     assert_eq!(serde_json::from_value::<Metadata>(json).unwrap(), metadata);
 }
+
+/// Without the rule, the metadata of a misspelled `_metadata` would be dropped.
+#[test]
+fn an_entry_with_an_unknown_field_does_not_parse() {
+    let mut entry = entry();
+    entry.metadata = Some(erc20_metadata());
+    let mut json = serde_json::to_value(&entry).unwrap();
+    assert_eq!(
+        serde_json::from_value::<Entry>(json.clone()).unwrap(),
+        entry
+    );
+    let metadata = json.as_object_mut().unwrap().remove("_metadata").unwrap();
+    json["metadata"] = metadata;
+    let error = serde_json::from_value::<Entry>(json).unwrap_err();
+    assert!(error.to_string().contains("unknown field `metadata`"));
+}
+
+/// Without the rule, an alias with a misspelled `alias_of` would read as the active kind.
+#[test]
+fn metadata_with_an_unknown_field_does_not_parse() {
+    let active = entry();
+    let alias = Metadata::Erc20 {
+        version: "1.0.0".into(),
+        name: "WETH".into(),
+        token: Address::with_last_byte(6),
+        forwarder: Address::with_last_byte(7),
+        status: Status::Deprecated,
+        alias_of: Some(AliasOf {
+            version: "2.0.0".into(),
+            logic_ref: active.logic_ref,
+            label_ref: active.label_ref,
+        }),
+    };
+    let mut json = serde_json::to_value(&alias).unwrap();
+    assert_eq!(
+        serde_json::from_value::<Metadata>(json.clone()).unwrap(),
+        alias
+    );
+    let alias_of = json.as_object_mut().unwrap().remove("alias_of").unwrap();
+    json["aliasof"] = alias_of;
+    let error = serde_json::from_value::<Metadata>(json).unwrap_err();
+    assert!(error.to_string().contains("unknown field `aliasof`"));
+}
+
+#[test]
+fn an_alias_of_with_an_unknown_field_does_not_parse() {
+    let active = entry();
+    let alias_of = AliasOf {
+        version: "2.0.0".into(),
+        logic_ref: active.logic_ref,
+        label_ref: active.label_ref,
+    };
+    let mut json = serde_json::to_value(&alias_of).unwrap();
+    assert_eq!(
+        serde_json::from_value::<AliasOf>(json.clone()).unwrap(),
+        alias_of
+    );
+    json["status"] = "active".into();
+    let error = serde_json::from_value::<AliasOf>(json).unwrap_err();
+    assert!(error.to_string().contains("unknown field `status`"));
+}

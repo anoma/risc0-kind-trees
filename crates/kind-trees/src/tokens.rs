@@ -14,6 +14,7 @@ use std::sync::LazyLock;
 /// The identity of a supported ERC20 token: what the contract itself reports, and whether its legacy-forwarder
 /// resources convert.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Token {
     pub symbol: String,
     pub name: String,
@@ -32,6 +33,7 @@ pub struct Token {
 /// The identity of a supported SPL token: its mint, and the name and symbol review knows it by. A mint reports
 /// only its decimals on chain; symbol and name are review context.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SplToken {
     pub symbol: String,
     pub name: String,
@@ -50,8 +52,8 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice, a chain that `Chain` does not know,
-    /// and a token listed twice on a chain.
+    /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice, a chain that `Chain` does not know, a
+    /// token listed twice on a chain, and a field that the format does not have.
     pub fn from_json(json: &str) -> Result<Self> {
         let sections: BTreeMap<Caip2ChainId, serde_json::Value> =
             chain::by_chain_from_json(json).map_err(Error::InvalidTokensJson)?;
@@ -103,9 +105,11 @@ static TOKENS: LazyLock<Tokens> = LazyLock::new(|| {
         .unwrap_or_else(|error| panic!("tokens.json: {error}"))
 });
 
-/// One chain's section. The `_comment` naming the chain is review context and is not deserialized.
+/// One chain's section. The `_comment` that names the chain is review context.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Section<T> {
+    _comment: Option<String>,
     tokens: Vec<T>,
 }
 
@@ -116,12 +120,13 @@ fn section_tokens<T: DeserializeOwned>(
     section: serde_json::Value,
     identity: impl Fn(&T) -> String,
 ) -> Result<Vec<T>> {
-    let Section { tokens } = serde_json::from_value::<Section<T>>(section).map_err(|reason| {
-        Error::InvalidTokenSection {
-            chain: chain.clone(),
-            reason,
-        }
-    })?;
+    let Section { tokens, .. } =
+        serde_json::from_value::<Section<T>>(section).map_err(|reason| {
+            Error::InvalidTokenSection {
+                chain: chain.clone(),
+                reason,
+            }
+        })?;
     let mut seen = BTreeSet::new();
     if let Some(token) = tokens.iter().find(|token| !seen.insert(identity(token))) {
         return Err(Error::DuplicateToken {

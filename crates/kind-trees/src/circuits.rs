@@ -26,11 +26,11 @@ pub enum Status {
 
 /// One listed version of the ERC20 transfer circuit.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(from = "CircuitVersionJson")]
 pub struct CircuitVersion {
     /// The circuit's release version. The crate that ships it can carry another version.
     pub version: String,
     /// The circuit's verifying key, which every resource of this version carries as its logic ref.
-    #[serde(with = "hex_digest")]
     pub logic_ref: Digest,
     pub status: Status,
 }
@@ -43,7 +43,7 @@ pub struct CircuitVersions {
 }
 
 impl CircuitVersions {
-    /// Reads lists in the format of `circuit-versions.json`.
+    /// Reads lists in the format of `circuit-versions.json`. Rejects a field that the format does not have.
     pub fn from_json(json: &str) -> Result<Self> {
         let file: File = serde_json::from_str(json).map_err(Error::InvalidCircuitVersionsJson)?;
         Ok(Self {
@@ -53,12 +53,37 @@ impl CircuitVersions {
     }
 }
 
+/// The file's form. The `_comment`s are review context.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct File {
+    _comment: Option<String>,
     #[serde(rename = "ERC20Resource")]
     erc20: Vec<CircuitVersion>,
+    _comment_spl_token: Option<String>,
     #[serde(rename = "SPLTokenResource")]
     spl_token: Vec<CircuitVersion>,
+}
+
+/// A circuit version's form in the file. The `_comment` is review context.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CircuitVersionJson {
+    _comment: Option<String>,
+    version: String,
+    #[serde(with = "hex_digest")]
+    logic_ref: Digest,
+    status: Status,
+}
+
+impl From<CircuitVersionJson> for CircuitVersion {
+    fn from(json: CircuitVersionJson) -> Self {
+        Self {
+            version: json.version,
+            logic_ref: json.logic_ref,
+            status: json.status,
+        }
+    }
 }
 
 static FILE: LazyLock<CircuitVersions> = LazyLock::new(|| {

@@ -559,3 +559,13 @@ fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
         Err(Error::UnknownChain(chain)) if chain == unknown
     ));
 }
+
+#[test]
+fn roots_from_json_rejects_an_unknown_field() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    let json = roots_json(&[&sepolia]).replace("\"root\"", "\"block\": 1, \"root\"");
+    assert!(matches!(
+        roots_from_json(&json),
+        Err(Error::InvalidRootsJson(error)) if error.to_string().contains("unknown field `block`")
+    ));
+}

@@ -129,3 +129,35 @@ fn from_json_rejects_a_mint_listed_twice_on_a_cluster() {
         Err(Error::DuplicateToken { chain, token }) if chain == devnet() && token == mint
     ));
 }
+
+#[test]
+fn from_json_rejects_an_unknown_field_of_a_section() {
+    let mut extra = section(Vec::new());
+    extra["chain"] = "sepolia".into();
+    assert!(matches!(
+        Tokens::from_json(&list(&[(&sepolia(), &extra)])),
+        Err(Error::InvalidTokenSection { chain, reason })
+            if chain == sepolia() && reason.to_string().contains("unknown field `chain`")
+    ));
+}
+
+/// Each token type has only its own fields: nothing reads the flag of an SPL token, which has no legacy forwarder, or
+/// the mint of an ERC20 token.
+#[test]
+fn from_json_rejects_a_field_that_the_token_type_does_not_have() {
+    let mint = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
+    let mut spl = spl_token(mint);
+    spl["soft_migrate_from_legacy_forwarder"] = true.into();
+    let mut erc20 = erc20_token(&Address::repeat_byte(0xab).to_string());
+    erc20["mint"] = mint.into();
+    for (chain, token, field) in [
+        (devnet(), spl, "soft_migrate_from_legacy_forwarder"),
+        (sepolia(), erc20, "mint"),
+    ] {
+        assert!(matches!(
+            Tokens::from_json(&list(&[(&chain, &section(vec![token]))])),
+            Err(Error::InvalidTokenSection { chain: failed, reason })
+                if failed == chain && reason.to_string().contains(&format!("unknown field `{field}`"))
+        ));
+    }
+}

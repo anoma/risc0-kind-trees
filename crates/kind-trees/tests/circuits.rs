@@ -151,3 +151,25 @@ fn circuit_versions_from_json_reads_the_lists_and_skips_the_comments() {
     assert_eq!(versions.erc20, [circuit("1.0.0", 1, Status::Active)]);
     assert_eq!(versions.spl_token, []);
 }
+
+#[test]
+fn circuit_versions_from_json_rejects_an_unknown_field_of_a_version() {
+    let mut file = file();
+    file["ERC20Resource"][0]["denied"] = true.into();
+    assert!(matches!(
+        CircuitVersions::from_json(&file.to_string()),
+        Err(Error::InvalidCircuitVersionsJson(error)) if error.to_string().contains("unknown field `denied`")
+    ));
+}
+
+/// A list that the crate does not read would give no entries.
+#[test]
+fn circuit_versions_from_json_rejects_an_unknown_list() {
+    let mut file = file();
+    file["GenericCallResource"] = json!([]);
+    assert!(matches!(
+        CircuitVersions::from_json(&file.to_string()),
+        Err(Error::InvalidCircuitVersionsJson(error))
+            if error.to_string().contains("unknown field `GenericCallResource`")
+    ));
+}
