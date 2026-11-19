@@ -1,7 +1,6 @@
-//! The kind derivation — RFC 9380 hash-to-curve over `logic_ref ‖ label_ref`, exactly as the compliance
-//! circuit computes it, pinned by the cross-check test against `anoma-rm-risc0`. A fungibility domain's kind
-//! base is the kind of the active version under the label of the environment's forwarder, so this is the only
-//! derivation.
+//! The kind derivation — RFC 9380 hash-to-curve over `logic_ref ‖ label_ref`, exactly as the compliance circuit
+//! computes it. A fungibility domain's kind base is the kind of the active version under the label of the
+//! environment's forwarder, so this is the only derivation.
 use crate::error::{Error, Result};
 use crate::solana::SolanaAddress;
 use alloy::primitives::Address;

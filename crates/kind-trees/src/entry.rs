@@ -75,7 +75,7 @@ pub enum Metadata {
 }
 
 impl Metadata {
-    /// The kind an ERC20 alias takes its kind base from; `None` for every other entry.
+    /// The kind an alias takes its kind base from; `None` for every other entry.
     pub fn alias_of(&self) -> Option<&AliasOf> {
         match self {
             Self::Erc20 { alias_of, .. } | Self::SplToken { alias_of, .. } => alias_of.as_ref(),
