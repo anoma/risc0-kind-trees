@@ -8,7 +8,7 @@ use crate::solana::SolanaAddress;
 use alloy::primitives::Address;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 /// The identity of a supported ERC20 token: what the contract itself reports, and whether its legacy-forwarder
@@ -50,7 +50,8 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice and a chain that `Chain` does not know.
+    /// Reads a list in the format of `tokens.json`. Rejects a chain listed twice, a chain that `Chain` does not know,
+    /// and a token listed twice on a chain.
     pub fn from_json(json: &str) -> Result<Self> {
         let sections: BTreeMap<Caip2ChainId, serde_json::Value> =
             chain::by_chain_from_json(json).map_err(Error::InvalidTokensJson)?;
@@ -62,11 +63,13 @@ impl Tokens {
             // A chain that does not resolve is an error: dropping it would drop its kinds.
             match Chain::try_from(&id)? {
                 Chain::Evm(_) => {
-                    let listed = section_tokens(&id, section)?;
+                    let listed =
+                        section_tokens(&id, section, |token: &Token| token.address.to_string())?;
                     tokens.erc20.insert(id, listed);
                 }
                 Chain::Solana(cluster) => {
-                    let listed = section_tokens(&id, section)?;
+                    let listed =
+                        section_tokens(&id, section, |token: &SplToken| token.mint.to_string())?;
                     tokens.spl.insert(cluster, listed);
                 }
             }
@@ -106,10 +109,12 @@ struct Section<T> {
     tokens: Vec<T>,
 }
 
-/// The tokens of a chain's section, as the token type that the chain family lists.
+/// The tokens of a chain's section, as the token type that the chain family lists. `identity` names a token; a token
+/// has one fungibility domain on a chain, so no two tokens have the same identity.
 fn section_tokens<T: DeserializeOwned>(
     chain: &Caip2ChainId,
     section: serde_json::Value,
+    identity: impl Fn(&T) -> String,
 ) -> Result<Vec<T>> {
     let Section { tokens } = serde_json::from_value::<Section<T>>(section).map_err(|reason| {
         Error::InvalidTokenSection {
@@ -117,5 +122,12 @@ fn section_tokens<T: DeserializeOwned>(
             reason,
         }
     })?;
+    let mut seen = BTreeSet::new();
+    if let Some(token) = tokens.iter().find(|token| !seen.insert(identity(token))) {
+        return Err(Error::DuplicateToken {
+            chain: chain.clone(),
+            token: identity(token),
+        });
+    }
     Ok(tokens)
 }

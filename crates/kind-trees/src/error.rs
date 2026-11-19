@@ -24,6 +24,8 @@ pub enum Error {
         chain: Caip2ChainId,
         reason: serde_json::Error,
     },
+    #[error("the token {token} is listed twice on {chain}")]
+    DuplicateToken { chain: Caip2ChainId, token: String },
     #[error("invalid circuit versions JSON: {0}")]
     InvalidCircuitVersionsJson(serde_json::Error),
     #[error("the kind ({logic_ref}, {label_ref}) is listed twice")]

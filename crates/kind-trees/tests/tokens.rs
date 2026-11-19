@@ -2,7 +2,6 @@ use alloy::primitives::Address;
 use anoma_risc0_kind_trees::tokens::*;
 use anoma_risc0_kind_trees::{Caip2ChainId, Error, SolanaCluster};
 use serde_json::{Value, json};
-use std::collections::BTreeSet;
 
 fn sepolia() -> Caip2ChainId {
     "eip155:11155111".parse().unwrap()
@@ -63,34 +62,6 @@ fn the_embedded_list_carries_the_devnet_test_mint_under_its_caip2_key() {
     );
 }
 
-/// A token has one fungibility domain on a chain; addresses compare as bytes, so letter case does not hide a repeat.
-#[test]
-fn no_chain_lists_a_token_twice() {
-    for (chain, supported) in all() {
-        let mut seen = BTreeSet::new();
-        for token in supported {
-            assert!(
-                seen.insert(token.address),
-                "{chain}: {} ({}) is listed twice",
-                token.symbol,
-                token.address
-            );
-        }
-    }
-    for (cluster, supported) in spl_all() {
-        let mut seen = BTreeSet::new();
-        for token in supported {
-            assert!(
-                seen.insert(token.mint),
-                "{}: {} ({}) is listed twice",
-                cluster.name(),
-                token.symbol,
-                token.mint
-            );
-        }
-    }
-}
-
 #[test]
 fn on_lists_no_token_for_a_chain_without_a_section() {
     let unnamed = Caip2ChainId::eip155(u64::MAX);
@@ -127,5 +98,34 @@ fn from_json_rejects_a_chain_that_chain_does_not_know() {
     assert!(matches!(
         Tokens::from_json(&list(&[(&unknown, &section(Vec::new()))])),
         Err(Error::UnknownChain(chain)) if chain == unknown
+    ));
+}
+
+/// Addresses compare as bytes, so letter case does not hide a repeat.
+#[test]
+fn from_json_rejects_a_token_listed_twice_on_a_chain() {
+    let address = Address::repeat_byte(0xab).to_string();
+    assert_ne!(
+        address,
+        address.to_lowercase(),
+        "premise: the checksum has capitals"
+    );
+    let twice = section(vec![
+        erc20_token(&address),
+        erc20_token(&address.to_lowercase()),
+    ]);
+    assert!(matches!(
+        Tokens::from_json(&list(&[(&sepolia(), &twice)])),
+        Err(Error::DuplicateToken { chain, token }) if chain == sepolia() && token == address
+    ));
+}
+
+#[test]
+fn from_json_rejects_a_mint_listed_twice_on_a_cluster() {
+    let mint = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
+    let twice = section(vec![spl_token(mint), spl_token(mint)]);
+    assert!(matches!(
+        Tokens::from_json(&list(&[(&devnet(), &twice)])),
+        Err(Error::DuplicateToken { chain, token }) if chain == devnet() && token == mint
     ));
 }
