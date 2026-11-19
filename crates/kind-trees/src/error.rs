@@ -6,11 +6,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("hash-to-curve failed for the kind ({logic_ref}, {label_ref})")]
-    KindDerivationFailed {
-        logic_ref: String,
-        label_ref: String,
-    },
     #[error("invalid JSON: {0}")]
     InvalidJson(#[from] serde_json::Error),
     #[error("invalid tokens JSON for {chain}: {reason}")]

@@ -36,7 +36,7 @@ fn spl_token_entries_makes_each_deprecated_version_an_alias_under_the_mint_label
             }),
             logic_ref: deprecated.logic_ref,
             label_ref,
-            kind_base: kind::point(&active.logic_ref, &label_ref).unwrap(),
+            kind_base: kind::point(&active.logic_ref, &label_ref),
         }]
     );
 }

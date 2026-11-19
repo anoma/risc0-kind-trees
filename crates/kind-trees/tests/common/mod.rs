@@ -10,7 +10,7 @@ pub fn own_kind(seed: u8) -> Entry {
     let label_ref = Digest::default();
     Entry {
         metadata: None,
-        kind_base: kind::point(&logic_ref, &label_ref).expect("a kind derives"),
+        kind_base: kind::point(&logic_ref, &label_ref),
         logic_ref,
         label_ref,
     }

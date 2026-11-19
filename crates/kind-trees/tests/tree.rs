@@ -128,7 +128,7 @@ fn check_member(
     active_label: Digest,
     status: Status,
 ) {
-    let domain = kind::point(&active.logic_ref, &active_label).expect("a kind derives");
+    let domain = kind::point(&active.logic_ref, &active_label);
     assert_eq!(
         entry.kind_base, domain,
         "{context}: a member is not assigned its fungibility domain's kind base"

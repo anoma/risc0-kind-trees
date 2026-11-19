@@ -13,7 +13,7 @@ fn generic_call_entry_is_assigned_its_own_kind_under_the_label_sha256_of_the_for
     };
     let label_ref = *Impl::hash_bytes(forwarder.as_slice());
 
-    let entry = generic_call_entry(forwarder, &circuit).unwrap();
+    let entry = generic_call_entry(forwarder, &circuit);
     assert_eq!(
         entry,
         Entry {
@@ -23,7 +23,7 @@ fn generic_call_entry_is_assigned_its_own_kind_under_the_label_sha256_of_the_for
             }),
             logic_ref: circuit.logic_ref,
             label_ref,
-            kind_base: kind::point(&circuit.logic_ref, &label_ref).unwrap(),
+            kind_base: kind::point(&circuit.logic_ref, &label_ref),
         }
     );
 }

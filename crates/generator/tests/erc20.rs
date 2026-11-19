@@ -56,7 +56,7 @@ fn erc20_entries_makes_each_deprecated_version_an_alias_of_the_active_version() 
             }),
             logic_ref: deprecated.logic_ref,
             label_ref,
-            kind_base: kind::point(&active.logic_ref, &label_ref).unwrap(),
+            kind_base: kind::point(&active.logic_ref, &label_ref),
         }]
     );
 }
@@ -110,8 +110,7 @@ fn erc20_entries_adds_the_legacy_member_only_for_a_token_that_soft_migrates() {
     let domain_kind_base = kind::point(
         &active.logic_ref,
         &kind::erc20_label_ref(&forwarder(), &address),
-    )
-    .unwrap();
+    );
 
     let staying = erc20_entries(
         &[token(false, false)],

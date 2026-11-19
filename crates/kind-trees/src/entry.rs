@@ -110,7 +110,7 @@ impl Entry {
     /// place it can come from. Generic call and the active version under the label of the environment's forwarder
     /// are not.
     pub fn is_alias(&self) -> bool {
-        !kind::point(&self.logic_ref, &self.label_ref).is_ok_and(|point| point == self.kind_base)
+        kind::point(&self.logic_ref, &self.label_ref) != self.kind_base
     }
 }
 

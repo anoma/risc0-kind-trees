@@ -151,7 +151,7 @@ fn chain_entries(
             &chain,
         )
     {
-        entries.push(generator::generic_call_entry(forwarder, generic_call)?);
+        entries.push(generator::generic_call_entry(forwarder, generic_call));
     }
 
     let supported = tokens::on(chain);

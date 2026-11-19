@@ -103,17 +103,17 @@ pub fn spl_token_entries(
 }
 
 /// The generic call entry of `forwarder`. It is assigned its own kind, so it makes no alias.
-pub fn generic_call_entry(forwarder: Address, circuit: &GenericCallCircuit) -> Result<Entry> {
+pub fn generic_call_entry(forwarder: Address, circuit: &GenericCallCircuit) -> Entry {
     let label_ref = *Impl::hash_bytes(forwarder.as_slice());
-    Ok(Entry {
+    Entry {
         metadata: Some(Metadata::GenericCall {
             version: circuit.version.clone(),
             forwarder,
         }),
-        kind_base: kind::point(&circuit.logic_ref, &label_ref)?,
+        kind_base: kind::point(&circuit.logic_ref, &label_ref),
         logic_ref: circuit.logic_ref,
         label_ref,
-    })
+    }
 }
 
 /// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
@@ -128,7 +128,7 @@ fn domain(
     entries: &mut Vec<Entry>,
 ) -> Result<(Vec<u8>, AliasOf)> {
     let active = circuits::check(circuits)?;
-    let point = kind::point(&active.logic_ref, &label_ref)?;
+    let point = kind::point(&active.logic_ref, &label_ref);
     let active_kind = AliasOf {
         version: active.version.clone(),
         logic_ref: active.logic_ref,
