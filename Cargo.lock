@@ -1454,14 +1454,10 @@ dependencies = [
  "alloy",
  "alloy-chains",
  "anoma-generic-call-forwarder-bindings",
- "anoma-generic-call-library",
- "anoma-pa-evm-bindings 3.0.0-rc.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "anoma-pa-solana-client",
  "anoma-rm-risc0",
  "anomapay-erc20-forwarder-bindings 3.0.0-rc.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "anomapay-spl-token-forwarder-client",
- "anomapay_erc20_library",
- "anyhow",
  "bs58",
  "hex",
  "k256",
@@ -1471,6 +1467,27 @@ dependencies = [
  "serde_json",
  "solana-cluster-type",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "anoma-risc0-kind-trees-generator"
+version = "1.0.0-rc.10"
+dependencies = [
+ "alloy",
+ "alloy-chains",
+ "anoma-generic-call-forwarder-bindings",
+ "anoma-generic-call-library",
+ "anoma-pa-evm-bindings 3.0.0-rc.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "anoma-pa-solana-client",
+ "anoma-risc0-kind-trees",
+ "anomapay-erc20-forwarder-bindings 3.0.0-rc.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "anomapay-spl-token-forwarder-client",
+ "anomapay_erc20_library",
+ "anyhow",
+ "hex",
+ "risc0-zkvm",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

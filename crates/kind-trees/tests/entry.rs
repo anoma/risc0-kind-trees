@@ -1,9 +1,10 @@
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::circuits::Status;
 use anoma_risc0_kind_trees::entry::*;
-use anoma_risc0_kind_trees::kind;
+use anoma_risc0_kind_trees::{Tree, kind};
 use hex::FromHex;
 use risc0_zkvm::Digest;
+use std::collections::BTreeSet;
 
 fn entry() -> Entry {
     let logic_ref =
@@ -42,6 +43,27 @@ fn is_alias_accepts_a_point_of_another_key() {
     assert!(alias.is_alias());
 }
 
+/// A kind base that is not the kind's own point is an alias, so the review list shows a malformed one.
+#[test]
+fn is_alias_holds_for_a_truncated_kind_base() {
+    let mut malformed = entry();
+    malformed.kind_base.pop();
+    assert!(malformed.is_alias());
+}
+
+/// The resource machine sorts its leaves in this order.
+#[test]
+fn key_orders_by_the_logic_ref_then_by_the_label_ref() {
+    let (low, high) = (Digest::from_bytes([1; 32]), Digest::from_bytes([2; 32]));
+    let kind = |logic_ref, label_ref| Entry {
+        logic_ref,
+        label_ref,
+        ..entry()
+    };
+    assert!(kind(low, high).key() < kind(high, low).key());
+    assert!(kind(low, low).key() < kind(low, high).key());
+}
+
 #[test]
 fn the_json_representation_round_trips() {
     let mut entry = entry();
@@ -50,15 +72,69 @@ fn the_json_representation_round_trips() {
     assert_eq!(serde_json::from_str::<Entry>(&json).unwrap(), entry);
 }
 
+/// The upstream loader reads the three fields and nothing else.
+#[test]
+fn an_entry_without_metadata_is_written_as_its_kind_and_kind_base_only() {
+    let json = serde_json::to_value(entry()).unwrap();
+    let fields: BTreeSet<&str> = json
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        fields,
+        BTreeSet::from(["logic_ref", "label_ref", "kind_base"])
+    );
+    assert_eq!(serde_json::from_value::<Entry>(json).unwrap(), entry());
+}
+
+#[test]
+fn an_entry_with_a_logic_ref_that_is_not_32_bytes_does_not_parse() {
+    let mut json = serde_json::to_value(entry()).unwrap();
+    json["logic_ref"] = hex::encode(&entry().logic_ref.as_bytes()[1..]).into();
+    assert!(serde_json::from_value::<Entry>(json).is_err());
+}
+
+#[test]
+fn metadata_of_an_unknown_type_does_not_parse() {
+    let mut json = serde_json::to_value(erc20_metadata()).unwrap();
+    json["type"] = "ERC721Resource".into();
+    assert!(serde_json::from_value::<Metadata>(json).is_err());
+}
+
+/// Addresses parse in any letter case and are written with the EIP-55 checksum.
+#[test]
+fn erc20_metadata_round_trips_with_checksummed_addresses() {
+    let usdc = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+    let active = entry();
+    let metadata = Metadata::Erc20 {
+        version: "1.0.0".into(),
+        name: "USDC".into(),
+        token: usdc.to_lowercase().parse().unwrap(),
+        forwarder: Address::with_last_byte(7),
+        status: Status::Deprecated,
+        alias_of: Some(AliasOf {
+            version: "2.0.0".into(),
+            logic_ref: active.logic_ref,
+            label_ref: active.label_ref,
+        }),
+    };
+    let json = serde_json::to_value(&metadata).unwrap();
+    assert_eq!(json["type"], "ERC20Resource");
+    assert_eq!(json["token"], usdc);
+    assert_eq!(json["status"], "deprecated");
+    assert_eq!(json["alias_of"]["logic_ref"], active.logic_ref.to_string());
+    assert_eq!(serde_json::from_value::<Metadata>(json).unwrap(), metadata);
+}
+
 #[test]
 fn the_metadata_stays_out_of_the_root_input() {
     let bare = entry();
     let mut annotated = entry();
     annotated.metadata = Some(erc20_metadata());
-    assert_eq!(
-        anoma_risc0_kind_trees::root::of(&[bare]),
-        anoma_risc0_kind_trees::root::of(&[annotated])
-    );
+    let root = |entry| Tree::new(vec![entry]).unwrap().root();
+    assert_eq!(root(bare), root(annotated));
 }
 
 #[test]

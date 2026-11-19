@@ -1,20 +1,18 @@
-//! Regenerates `data/generated/` from the authored inputs (`tokens.json`, `circuit-versions.json`) and the
-//! pinned dependencies (the generic-call logic ref, the forwarder and protocol adapter deployment
-//! records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
+//! Regenerates `crates/kind-trees/data/generated/` from the authored inputs (`tokens.json`,
+//! `circuit-versions.json`) and the pinned dependencies (the generic-call logic ref, the forwarder and protocol
+//! adapter deployment records). CI reruns this and fails on any diff, so the committed artifacts always match the pins.
 
-use alloy::primitives::Address;
 use alloy_chains::NamedChain;
 use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCallEnvironment;
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
 use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
-    AliasOf, Caip2ChainId, Chain, CircuitVersion, Entry, Metadata, SolanaAddress, SolanaCluster,
-    Status, circuits, kind, root, tokens,
+    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, circuits, tokens,
 };
+use anoma_risc0_kind_trees_generator::{self as generator, GenericCallCircuit, LegacyForwarder};
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
 use anyhow::{Context, Result, bail, ensure};
 use risc0_zkvm::Digest;
-use risc0_zkvm::sha::{Impl, Sha256};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -30,15 +28,6 @@ struct ChainRoot {
     root: String,
 }
 
-/// The legacy ERC20 forwarder of a chain: the immutable forwarder of its legacy protocol adapter. Under its label, the
-/// logic ref it accepts is a member of every ERC20 fungibility domain of the chain, so its resources convert and leave
-/// through the environment's forwarder.
-struct LegacyForwarder {
-    address: Address,
-    /// The logic ref it accepts, the only one its resources carry.
-    logic_ref: Digest,
-}
-
 /// The legacy ERC20 forwarder a chain records, from the forwarder repository's deployment record, where its fork
 /// tests verify it against the chain.
 fn legacy_erc20_forwarder(chain: &NamedChain) -> Option<LegacyForwarder> {
@@ -52,10 +41,6 @@ fn legacy_erc20_forwarder(chain: &NamedChain) -> Option<LegacyForwarder> {
 
 fn digest(bytes: &[u8]) -> Digest {
     Digest::try_from(bytes).expect("a logic ref is 32 bytes")
-}
-
-fn sha256(bytes: &[u8]) -> Digest {
-    *Impl::hash_bytes(bytes)
 }
 
 fn hex(digest: &Digest) -> String {
@@ -83,80 +68,6 @@ fn solana_environment(environment: Environment) -> SolanaEnvironment {
         Environment::Staging => SolanaEnvironment::Staging,
         Environment::Production => SolanaEnvironment::Production,
     }
-}
-
-/// An entry outside every fungibility domain: it is assigned its own kind.
-fn derived(metadata: Metadata, logic_ref: Digest, label_ref: Digest) -> Result<Entry> {
-    Ok(Entry {
-        metadata: Some(metadata),
-        kind_base: kind::point(&logic_ref, &label_ref)?,
-        logic_ref,
-        label_ref,
-    })
-}
-
-/// A member of a token's fungibility domain: one circuit version under one forwarder's label, assigned the
-/// fungibility domain's kind base. `alias_of` names the kind that point is; only the active version under the
-/// label of the environment's forwarder carries none, and only that member is active. `metadata` names the token
-/// and forwarder the member belongs to, given the member's version, status and `alias_of`.
-fn member(
-    circuit: &CircuitVersion,
-    label_ref: Digest,
-    domain_kind_base: &[u8],
-    alias_of: Option<AliasOf>,
-    metadata: impl FnOnce(String, Status, Option<AliasOf>) -> Metadata,
-) -> Entry {
-    let status = if alias_of.is_none() {
-        Status::Active
-    } else {
-        Status::Deprecated
-    };
-    Entry {
-        metadata: Some(metadata(circuit.version.clone(), status, alias_of)),
-        logic_ref: circuit.logic_ref,
-        label_ref,
-        kind_base: domain_kind_base.to_vec(),
-    }
-}
-
-/// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
-/// circuit version as an alias of the active version under that label, and the active version itself, assigned its
-/// own kind, only if `precompute` is set for the token. Returns the domain's kind base and the kind every alias
-/// names, for members added under another label.
-fn domain(
-    listed: &[CircuitVersion],
-    active: &CircuitVersion,
-    label_ref: Digest,
-    precompute: bool,
-    metadata: impl Fn(String, Status, Option<AliasOf>) -> Metadata,
-    entries: &mut Vec<Entry>,
-) -> Result<(Vec<u8>, AliasOf)> {
-    let point = kind::point(&active.logic_ref, &label_ref)?;
-    let active_kind = AliasOf {
-        version: active.version.clone(),
-        logic_ref: active.logic_ref,
-        label_ref,
-    };
-    for circuit in listed {
-        let alias_of = (circuit.status == Status::Deprecated).then(|| active_kind.clone());
-        if alias_of.is_none() && !precompute {
-            continue;
-        }
-        entries.push(member(circuit, label_ref, &point, alias_of, &metadata));
-    }
-    Ok((point, active_kind))
-}
-
-/// A tree's entries in tree order, sorted by kind, with no kind listed twice.
-fn sorted(mut entries: Vec<Entry>, chain: &Chain) -> Result<Vec<Entry>> {
-    entries.sort_by_key(Entry::key);
-    if entries
-        .windows(2)
-        .any(|pair| pair[0].key() == pair[1].key())
-    {
-        bail!("{chain}: duplicate kind");
-    }
-    Ok(entries)
 }
 
 /// The circuit version behind the generic-call logic ref, and that of the pinned ERC20 crate.
@@ -189,22 +100,26 @@ fn versions() -> Result<Versions> {
     let metadata: Value =
         serde_json::from_slice(&output.stdout).context("cargo metadata output")?;
 
-    let version_by_id: BTreeMap<&str, &str> = metadata["packages"]
+    let packages = metadata["packages"]
         .as_array()
-        .context("cargo metadata reported no packages")?
+        .context("cargo metadata reported no packages")?;
+    let version_by_id: BTreeMap<&str, &str> = packages
         .iter()
         .filter_map(|package| Some((package["id"].as_str()?, package["version"].as_str()?)))
         .collect();
 
+    // Every package ID in this workspace contains the folder name, so only the manifest path names this package.
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let id = packages
+        .iter()
+        .find(|package| package["manifest_path"].as_str().map(Path::new) == Some(&manifest))
+        .and_then(|package| package["id"].as_str())
+        .context("cargo metadata does not list this package")?;
     let node = metadata["resolve"]["nodes"]
         .as_array()
         .context("cargo metadata reported no resolve graph")?
         .iter()
-        .find(|node| {
-            node["id"]
-                .as_str()
-                .is_some_and(|id| id.contains(env!("CARGO_PKG_NAME")))
-        })
+        .find(|node| node["id"].as_str() == Some(id))
         .context("this package is missing from the resolve graph")?;
 
     let version_of = |lib: &str| -> Result<String> {
@@ -263,136 +178,76 @@ fn check_circuit_versions(versions: &Versions) -> Result<()> {
     Ok(())
 }
 
-/// A Solana cluster's entries: one fungibility domain per supported mint under the label of the environment's SPL
-/// token forwarder program. As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder, so
-/// no generic call entry.
+/// A Solana cluster's entries. As on EVM chains, the padding kind is not listed. Solana has no generic call forwarder,
+/// so no generic call entry.
 fn solana_entries(environment: Environment, cluster: SolanaCluster) -> Result<Vec<Entry>> {
-    let mut entries = Vec::new();
     let supported = tokens::spl_on(cluster);
-    let Some(forwarder) =
-        anomapay_spl_token_forwarder_client::addresses::spl_token_forwarder_address(
-            solana_environment(environment),
-            &cluster.into(),
-        )
-    else {
-        if !supported.is_empty() {
+    match anomapay_spl_token_forwarder_client::addresses::spl_token_forwarder_address(
+        solana_environment(environment),
+        &cluster.into(),
+    ) {
+        Some(forwarder) => generator::spl_token_entries(
+            supported,
+            circuits::spl_token(),
+            SolanaAddress::new(forwarder.to_bytes()),
+        ),
+        None if supported.is_empty() => Ok(Vec::new()),
+        None => {
             eprintln!(
                 "{}: {} supported mints but no SPL token forwarder recorded - no token kinds emitted",
                 cluster.name(),
                 supported.len()
             );
+            Ok(Vec::new())
         }
-        return Ok(entries);
-    };
-    let forwarder = SolanaAddress::new(forwarder.to_bytes());
-    for token in supported {
-        domain(
-            circuits::spl_token(),
-            circuits::spl_token_active(),
-            kind::spl_token_label_ref(&forwarder, &token.mint),
-            token.precompute_kind_base,
-            |version, status, alias_of| Metadata::SplToken {
-                version,
-                name: token.symbol.clone(),
-                mint: token.mint,
-                forwarder,
-                status,
-                alias_of,
-            },
-            &mut entries,
-        )?;
     }
-    Ok(entries)
 }
 
+/// An EVM chain's entries. The padding kind is not listed: its resources never convert and need no precomputed kind
+/// base, and its logic ref would tie every tree to the arm-risc0 release.
 fn chain_entries(
     environment: Environment,
     chain: NamedChain,
     versions: &Versions,
 ) -> Result<Vec<Entry>> {
-    // The padding kind is not listed: its resources never convert and need no precomputed kind base, and its logic
-    // ref would tie every tree to the arm-risc0 release.
     let mut entries = Vec::new();
-
     if let Some(forwarder) =
         anoma_generic_call_forwarder_bindings::addresses::generic_call_forwarder_address(
             generic_call_environment(environment),
             &chain,
         )
     {
-        entries.push(derived(
-            Metadata::GenericCall {
+        entries.push(generator::generic_call_entry(
+            forwarder,
+            &GenericCallCircuit {
+                logic_ref: digest(anoma_generic_call_library::GENERIC_CALL_ID.as_bytes()),
                 version: versions.generic_call.clone(),
-                forwarder,
             },
-            digest(anoma_generic_call_library::GENERIC_CALL_ID.as_bytes()),
-            sha256(forwarder.as_slice()),
         )?);
     }
 
-    // One fungibility domain per token, assigned the kind of the active version under the label of the environment's
-    // forwarder: every deprecated circuit version under that label and, for a token the list marks for soft migration,
-    // the legacy ERC20 forwarder's logic ref under its own label, as aliases. The active version keeps its own kind,
-    // which the circuit computes without the tree, so it gets an entry only if the token asks for a precomputed kind
-    // base.
     let supported = tokens::on(chain);
     match anomapay_erc20_forwarder_bindings::addresses::erc20_forwarder_address(
         erc20_environment(environment),
         &chain,
     ) {
-        Some(environment_forwarder) => {
-            let legacy = legacy_erc20_forwarder(&chain);
-            for token in supported {
-                let erc20 = |forwarder: Address| {
-                    move |version, status, alias_of| Metadata::Erc20 {
-                        version,
-                        name: token.symbol.clone(),
-                        token: token.address,
-                        forwarder,
-                        status,
-                        alias_of,
-                    }
-                };
-                let (point, active_kind) = domain(
-                    circuits::erc20(),
-                    circuits::erc20_active(),
-                    kind::erc20_label_ref(&environment_forwarder, &token.address),
-                    token.precompute_kind_base,
-                    erc20(environment_forwarder),
-                    &mut entries,
-                )?;
-                if token.soft_migrate_from_legacy_forwarder
-                    && let Some(legacy) = &legacy
-                {
-                    let circuit = circuits::erc20_version(&legacy.logic_ref).with_context(|| {
-                        format!(
-                            "{chain}: the legacy ERC20 forwarder {} accepts logic ref {}, which circuit-versions.json does not list",
-                            legacy.address,
-                            hex(&legacy.logic_ref)
-                        )
-                    })?;
-                    entries.push(member(
-                        circuit,
-                        kind::erc20_label_ref(&legacy.address, &token.address),
-                        &point,
-                        Some(active_kind),
-                        erc20(legacy.address),
-                    ));
-                }
-            }
-        }
+        Some(forwarder) => entries.extend(generator::erc20_entries(
+            supported,
+            circuits::erc20(),
+            forwarder,
+            legacy_erc20_forwarder(&chain).as_ref(),
+        )?),
         None if supported.is_empty() => {}
         None => eprintln!(
             "{chain}: {} supported tokens but no ERC20 forwarder recorded - no token kinds emitted",
             supported.len()
         ),
     }
-
     Ok(entries)
 }
 
 fn main() -> Result<()> {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("data");
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../kind-trees/data");
 
     let versions = versions()?;
     check_circuit_versions(&versions)?;
@@ -413,7 +268,8 @@ fn main() -> Result<()> {
         for chain in chains {
             trees.push((
                 Chain::Evm(chain),
-                chain_entries(environment, chain, &versions)?,
+                chain_entries(environment, chain, &versions)
+                    .with_context(|| format!("{name} {chain}"))?,
             ));
         }
         let mut clusters = anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
@@ -426,24 +282,25 @@ fn main() -> Result<()> {
         for cluster in clusters {
             trees.push((
                 Chain::Solana(cluster),
-                solana_entries(environment, cluster)?,
+                solana_entries(environment, cluster)
+                    .with_context(|| format!("{name} {}", cluster.name()))?,
             ));
         }
 
         let mut files = Vec::new();
         let mut roots = BTreeMap::new();
         for (chain, entries) in trees {
-            let entries = sorted(entries, &chain)?;
+            let tree = generator::tree(entries).with_context(|| format!("{name} {chain}"))?;
             let id = Caip2ChainId::from(chain);
             files.push((
                 id.file_name(),
-                serde_json::to_string_pretty(&entries)? + "\n",
+                serde_json::to_string_pretty(tree.entries())? + "\n",
             ));
             roots.insert(
                 id,
                 ChainRoot {
                     comment: chain.to_string(),
-                    root: hex::encode(root::of(&entries).as_bytes()),
+                    root: hex::encode(tree.root().as_bytes()),
                 },
             );
         }

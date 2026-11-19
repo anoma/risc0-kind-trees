@@ -15,7 +15,7 @@ A Solana cluster's tree is built the same way from different records. Each suppo
 ## Layout
 
 ```
-crates/kind-trees/            the library and the generator
+crates/kind-trees/             the library: the types, the root, the token list and the embedded trees
 ├── data/
 │   ├── tokens.json            authored: the supported tokens, per chain
 │   ├── circuit-versions.json  authored: the ERC20 and SPL token circuit versions, once for every chain
@@ -23,6 +23,7 @@ crates/kind-trees/            the library and the generator
 │       ├── staging/           <namespace>_<reference>.json trees + roots.json
 │       └── production/
 └── src/
+crates/generator/              the generator, not published: writes data/generated/ from the inputs and the deployment records
 crates/integration-test/       on-chain token, forwarder and Solana cluster checks, promotion freshness and soft-migration gates, arm-risc0 cross-check
 docs/adr/                      the decisions behind this layout
 ```
@@ -112,7 +113,7 @@ The generator pins the crate of the active version and the crate of the legacy c
    ```toml
    anomapay_erc20_library = "=2.0.0-rc.1"
    ```
-2. If the release has a new crate name, use it in [`crates/kind-trees/Cargo.toml`](crates/kind-trees/Cargo.toml), as the optional dependency and in the `generate` feature list, and in `versions()` and `pinned_erc20_circuits` in [`crates/kind-trees/src/bin/generate.rs`](crates/kind-trees/src/bin/generate.rs).
+2. If the release has a new crate name, use it in [`crates/generator/Cargo.toml`](crates/generator/Cargo.toml), and in `versions()` and `pinned_erc20_circuits` in [`crates/generator/src/main.rs`](crates/generator/src/main.rs).
 3. In [`crates/kind-trees/data/circuit-versions.json`](crates/kind-trees/data/circuit-versions.json), append the version with `"status": "active"` and set the previous active version to `"deprecated"`.
 4. Run `just generate`. Read the diff: one new entry per token on every chain, and every older version's entries now alias the new one.
 5. Commit the edited files together with the regenerated trees.

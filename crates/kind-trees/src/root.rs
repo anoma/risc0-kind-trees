@@ -7,17 +7,10 @@ use crate::entry::Entry;
 use risc0_zkvm::Digest;
 use risc0_zkvm::sha::{Impl, Sha256};
 
-/// Computes the root of a tree given as its entries, in any order.
-pub fn of(entries: &[Entry]) -> Digest {
-    let mut sorted: Vec<&Entry> = entries.iter().collect();
-    sorted.sort_by(|a, b| {
-        a.logic_ref
-            .as_bytes()
-            .cmp(b.logic_ref.as_bytes())
-            .then_with(|| a.label_ref.as_bytes().cmp(b.label_ref.as_bytes()))
-    });
+/// Computes the root over entries in key order.
+pub(crate) fn of(entries: &[Entry]) -> Digest {
     let padding = *Impl::hash_bytes(b"EMPTY");
-    let mut layer: Vec<Digest> = sorted.into_iter().map(leaf).collect();
+    let mut layer: Vec<Digest> = entries.iter().map(leaf).collect();
     if layer.is_empty() {
         return padding;
     }

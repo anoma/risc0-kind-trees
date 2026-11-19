@@ -3,7 +3,7 @@ pub mod circuits;
 pub mod entry;
 pub mod error;
 pub mod kind;
-pub mod root;
+mod root;
 pub mod solana;
 pub mod tokens;
 pub mod tree;

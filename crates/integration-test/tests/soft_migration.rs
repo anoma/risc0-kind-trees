@@ -128,7 +128,7 @@ async fn load_the_generated_tree(env: &EvmE2eEnv) -> anyhow::Result<()> {
     let chain = Caip2ChainId::eip155(chain_id(env)?);
     let tree =
         tree::staging::tree(chain.clone()).with_context(|| format!("{chain}: no staging tree"))?;
-    init_kind_tree_from_entries(tree.entries.iter().map(KindTreeEntry::from).collect())
+    init_kind_tree_from_entries(tree.entries().iter().map(KindTreeEntry::from).collect())
         .context("failed to load the kind tree")?;
     let loaded = kind_tree_root().context("no kind tree loaded")?;
     let stored = env
