@@ -17,11 +17,9 @@ const DST: &[u8] = b"QUUX-V01-CS02-with-secp256k1_XMD:SHA-256_SSWU_RO_";
 
 /// Derives a kind: the uncompressed SEC1 encoding (65 bytes).
 pub fn point(logic_ref: &Digest, label_ref: &Digest) -> Result<Vec<u8>> {
-    let mut bytes = [0u8; 64];
-    bytes[..32].copy_from_slice(logic_ref.as_ref());
-    bytes[32..].copy_from_slice(label_ref.as_ref());
+    let message: [&[u8]; 2] = [logic_ref.as_bytes(), label_ref.as_bytes()];
     let point =
-        Secp256k1::hash_from_bytes::<ExpandMsgXmd<Sha256>>(&[&bytes], &[DST]).map_err(|_| {
+        Secp256k1::hash_from_bytes::<ExpandMsgXmd<Sha256>>(&message, &[DST]).map_err(|_| {
             Error::KindDerivationFailed {
                 logic_ref: logic_ref.to_string(),
                 label_ref: label_ref.to_string(),

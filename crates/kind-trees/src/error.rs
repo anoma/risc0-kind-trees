@@ -11,8 +11,6 @@ pub enum Error {
         logic_ref: String,
         label_ref: String,
     },
-    #[error("invalid hex digest: {0}")]
-    InvalidDigest(String),
     #[error("invalid JSON: {0}")]
     InvalidJson(#[from] serde_json::Error),
     #[error("invalid tokens JSON for {chain}: {reason}")]

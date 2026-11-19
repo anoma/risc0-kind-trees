@@ -25,16 +25,16 @@ pub(crate) fn of(entries: &[Entry]) -> Digest {
 }
 
 fn leaf(entry: &Entry) -> Digest {
-    let mut bytes = Vec::with_capacity(64 + entry.kind_base.len());
-    bytes.extend_from_slice(entry.logic_ref.as_bytes());
-    bytes.extend_from_slice(entry.label_ref.as_bytes());
-    bytes.extend_from_slice(&entry.kind_base);
-    *Impl::hash_bytes(&bytes)
+    *Impl::hash_bytes(
+        &[
+            entry.logic_ref.as_bytes(),
+            entry.label_ref.as_bytes(),
+            &entry.kind_base,
+        ]
+        .concat(),
+    )
 }
 
 fn node(left: &Digest, right: &Digest) -> Digest {
-    let mut words = Vec::with_capacity(16);
-    words.extend_from_slice(left.as_words());
-    words.extend_from_slice(right.as_words());
-    *Impl::hash_words(&words)
+    *Impl::hash_words(&[left.as_words(), right.as_words()].concat())
 }
