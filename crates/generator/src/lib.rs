@@ -3,8 +3,8 @@
 
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::{
-    AliasOf, CircuitVersion, Entry, Error, Metadata, SolanaAddress, SplToken, Status, Token, Tree,
-    circuits, kind,
+    AliasOf, CircuitVersion, Entry, Metadata, SolanaAddress, SplToken, Status, Token, circuits,
+    kind,
 };
 use anyhow::{Context, Result};
 use risc0_zkvm::Digest;
@@ -116,32 +116,6 @@ pub fn generic_call_entry(forwarder: Address, circuit: &GenericCallCircuit) -> R
     })
 }
 
-/// The tree of the entries. The error for a kind listed twice names what the kind belongs to.
-pub fn tree(entries: Vec<Entry>) -> Result<Tree> {
-    let error = match Tree::new(entries.clone()) {
-        Ok(tree) => return Ok(tree),
-        Err(error) => error,
-    };
-    let Error::DuplicateKind {
-        logic_ref,
-        label_ref,
-    } = error
-    else {
-        return Err(error.into());
-    };
-    let mut owners: Vec<String> = entries
-        .iter()
-        .filter(|entry| (entry.logic_ref, entry.label_ref) == (logic_ref, label_ref))
-        .filter_map(|entry| entry.metadata.as_ref().map(owner))
-        .collect();
-    owners.sort();
-    owners.dedup();
-    if owners.is_empty() {
-        return Err(error.into());
-    }
-    Err(anyhow::Error::new(error).context(owners.join(" and ")))
-}
-
 /// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
 /// circuit version as an alias of the active version under that label, and the active version itself, assigned its
 /// own kind, only if `precompute` is set for the token. Returns the domain's kind base and the kind every alias
@@ -191,28 +165,5 @@ fn member(
         logic_ref: circuit.logic_ref,
         label_ref,
         kind_base: domain_kind_base.to_vec(),
-    }
-}
-
-/// What an entry belongs to, in the terms of `tokens.json` and the deployment records.
-fn owner(metadata: &Metadata) -> String {
-    match metadata {
-        Metadata::Erc20 {
-            version,
-            name,
-            token,
-            forwarder,
-            ..
-        } => format!("{name} {token} at the forwarder {forwarder}, circuit version {version}"),
-        Metadata::SplToken {
-            version,
-            name,
-            mint,
-            forwarder,
-            ..
-        } => format!("{name} {mint} at the forwarder {forwarder}, circuit version {version}"),
-        Metadata::GenericCall { version, forwarder } => {
-            format!("the generic call forwarder {forwarder}, circuit version {version}")
-        }
     }
 }

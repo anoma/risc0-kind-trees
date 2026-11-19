@@ -7,7 +7,7 @@ use anoma_generic_call_forwarder_bindings::addresses::Environment as GenericCall
 use anoma_pa_evm_bindings::addresses::{Environment, protocol_adapter_deployments_map};
 use anoma_pa_solana_client::addresses::Environment as SolanaEnvironment;
 use anoma_risc0_kind_trees::{
-    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, circuits, tokens,
+    Caip2ChainId, Chain, Entry, SolanaAddress, SolanaCluster, Tree, circuits, tokens,
 };
 use anoma_risc0_kind_trees_generator::{self as generator, GenericCallCircuit, LegacyForwarder};
 use anomapay_erc20_forwarder_bindings::addresses::Environment as Erc20Environment;
@@ -220,38 +220,27 @@ fn main() -> Result<()> {
         (Environment::Staging, "staging"),
         (Environment::Production, "production"),
     ] {
-        let mut chains: Vec<_> = protocol_adapter_deployments_map(environment)
+        let mut chains: Vec<Chain> = protocol_adapter_deployments_map(environment)
             .into_keys()
+            .map(Chain::Evm)
             .collect();
-        chains.sort();
-
-        let mut trees = Vec::new();
-        for chain in chains {
-            trees.push((
-                Chain::Evm(chain),
-                chain_entries(environment, chain, &versions)
-                    .with_context(|| format!("{name} {chain}"))?,
-            ));
-        }
-        let mut clusters = anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
+        for (cluster, _) in anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
             solana_environment(environment),
-        )
-        .into_iter()
-        .map(|(cluster, _)| SolanaCluster::try_from(cluster))
-        .collect::<anoma_risc0_kind_trees::Result<Vec<_>>>()?;
-        clusters.sort();
-        for cluster in clusters {
-            trees.push((
-                Chain::Solana(cluster),
-                solana_entries(environment, cluster)
-                    .with_context(|| format!("{name} {}", cluster.name()))?,
-            ));
+        ) {
+            chains.push(Chain::Solana(cluster.try_into()?));
         }
+        chains.sort();
 
         let mut files = Vec::new();
         let mut roots = BTreeMap::new();
-        for (chain, entries) in trees {
-            let tree = generator::tree(entries).with_context(|| format!("{name} {chain}"))?;
+        for chain in chains {
+            let entries = match chain {
+                Chain::Evm(chain) => chain_entries(environment, chain, &versions),
+                Chain::Solana(cluster) => solana_entries(environment, cluster),
+            };
+            let tree = entries
+                .and_then(|entries| Ok(Tree::new(entries)?))
+                .with_context(|| format!("{name} {chain}"))?;
             let id = Caip2ChainId::from(chain);
             files.push((
                 id.file_name(),
