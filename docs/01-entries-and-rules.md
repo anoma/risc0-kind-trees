@@ -6,7 +6,7 @@ This document specifies how the generator makes the entries and the root of each
 
 - **One fungibility domain for each supported token.** Its kind base is the kind of the active version under the label that names the token and the forwarder of the environment. Each deprecated version gets an entry under this label with this kind base: an alias of the active version.
 - **The active version** keeps its own kind base. It gets an entry only if the token sets `precompute_kind_base`.
-- **The legacy-forwarder resources** of a token get an alias in its fungibility domain, on a chain with a legacy ERC20 forwarder, if `tokens.json` marks the token with `soft_migrate_from_legacy_forwarder` ([`03-legacy-erc20-forwarder.md`](./03-legacy-erc20-forwarder.md)).
+- **The legacy-forwarder resources** of a token get an alias in its fungibility domain, on a migrated chain of the environment, if `tokens.json` marks the token with `soft_migrate_from_legacy_forwarder` ([`03-legacy-erc20-forwarder.md`](./03-legacy-erc20-forwarder.md)).
 - **The generic call resources** get an entry with their own kind base. This entry makes no alias.
 - **The root** is the Merkle root over the hashes of the entries, sorted by logic ref and label ref, with `sha256("EMPTY")` as the padding leaf. This is the tree that arm-risc0 builds, and a test compares the two calculations ([ADR-0004](./adr/0004-the-hash-is-owned-here-and-cross-checked.md)).
 

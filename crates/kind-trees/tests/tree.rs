@@ -9,7 +9,7 @@ use anoma_risc0_kind_trees::circuits::{self, CircuitVersion, Status};
 use anoma_risc0_kind_trees::entry::Metadata;
 use anoma_risc0_kind_trees::tree::*;
 use anoma_risc0_kind_trees::{Caip2ChainId, Entry, Error, SolanaAddress};
-use anoma_risc0_kind_trees::{kind, tokens};
+use anoma_risc0_kind_trees::{kind, migrated, tokens};
 use anomapay_erc20_forwarder_bindings::addresses::{
     Environment, erc20_forwarder_address, legacy_erc20_forwarder,
 };
@@ -48,6 +48,14 @@ fn generic_call_forwarder(
     generic_call_forwarder_address(environment, &chain)
 }
 
+/// The chains on which the environment's protocol adapter copied the legacy state.
+fn migrated_chains(environment: Environment) -> &'static BTreeSet<Caip2ChainId> {
+    match environment {
+        Environment::Staging => &migrated::chains().staging,
+        Environment::Production => &migrated::chains().production,
+    }
+}
+
 /// Adds a token's members under one label: every deprecated version, and the active version only if the token asks
 /// for a precomputed kind base.
 fn insert_members(
@@ -71,7 +79,8 @@ fn expected_token_kinds(environment: Environment, chain: Chain) -> BTreeSet<Kind
             let Some(forwarder) = erc20_forwarder_address(environment, &named) else {
                 return kinds;
             };
-            let legacy = legacy_erc20_forwarder(&named);
+            let legacy = legacy_erc20_forwarder(&named)
+                .filter(|_| migrated_chains(environment).contains(&Caip2ChainId::from(named)));
             for token in tokens::on(named) {
                 let label_ref = kind::erc20_label_ref(&forwarder, &token.address);
                 insert_members(
@@ -230,7 +239,8 @@ fn token_entries_share_their_fungibility_domains_kind_base() {
 }
 
 /// Every kind besides the generic call kind is a token member the rules call for: no unsupported token, no
-/// unrecorded forwarder, no legacy member of a token that does not soft-migrate, and no missing alias.
+/// unrecorded forwarder, no legacy member of a token that does not soft-migrate or on a chain that did not migrate, and
+/// no missing alias.
 #[test]
 fn every_tree_lists_exactly_the_token_kinds_the_token_list_and_the_records_call_for() {
     let mut checked = 0;

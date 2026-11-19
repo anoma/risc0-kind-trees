@@ -20,10 +20,10 @@ pub struct Token {
     pub name: String,
     pub decimals: u8,
     pub address: Address,
-    /// Whether the legacy ERC20 forwarder's label joins this token's fungibility domain, which makes its
-    /// legacy-forwarder resources fungible with those of the environment's forwarder, so they convert and leave
-    /// through the environment's forwarder. Every token states it; a token set to `false` keeps its legacy-forwarder
-    /// resources where they are.
+    /// Whether, on a migrated chain, the legacy ERC20 forwarder's label joins this token's fungibility domain, which
+    /// makes its legacy-forwarder resources fungible with those of the environment's forwarder, so they convert and
+    /// leave through the environment's forwarder. Every token states it; a token set to `false` keeps its
+    /// legacy-forwarder resources where they are.
     pub soft_migrate_from_legacy_forwarder: bool,
     /// Whether the tree lists the token's active kind with its own kind base, so the compliance circuit reads the
     /// point instead of computing it by hash to curve. Every token states it; its aliases are listed either way.

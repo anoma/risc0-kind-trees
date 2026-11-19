@@ -73,7 +73,7 @@ An ERC20 resource whose label names a legacy ERC20 forwarder.
 _Avoid_: V1 resource, immutable-forwarder resource, 2.0.0 resource (a circuit version names a logic ref, and a logic ref does not tell a legacy-forwarder resource from one of the environment's forwarder)
 
 **Migrated chain**:
-A chain whose protocol adapter copied the state of its legacy protocol adapter.
+A chain on which an environment's protocol adapter copied the state of the legacy protocol adapter. `data/migrated-chains.json` lists them per environment, so one chain can be migrated in one environment and start fresh in the other.
 
 **Kind tree root**:
 The Merkle root over a tree's entries that a protocol adapter stores and every compliance proof that takes a kind from the tree reproduces. The value this repo exists to publish.
@@ -89,7 +89,7 @@ A check outside the circuits, for example the check of the protocol adapter that
 An ERC20 contract or SPL token mint this project maintains kinds for, on a named chain. Being supported is a standing commitment and does not depend on where anything is deployed. Each one says whether the tree precomputes its active kind base, and each ERC20 token whether its legacy-forwarder resources can soft-migrate; Solana has no legacy forwarder.
 
 **Soft migration from the legacy ERC20 forwarder**:
-Whether the legacy ERC20 forwarder's label joins the fungibility domain of one supported token, which makes that token's legacy-forwarder resources fungible with the resources of the environment's forwarder, so they convert and leave. `data/tokens.json` states it per chain and per token in `soft_migrate_from_legacy_forwarder`, and only a token set to `true` gets a member under the legacy ERC20 forwarder's label.
+Whether the legacy ERC20 forwarder's label joins the fungibility domain of one supported token, which makes that token's legacy-forwarder resources fungible with the resources of the environment's forwarder, so they convert and leave. `data/tokens.json` states it per chain and per token in `soft_migrate_from_legacy_forwarder`, and a token set to `true` gets a member under the legacy ERC20 forwarder's label only on a migrated chain.
 _Avoid_: V1 fungibility, migration (on its own: the forwarder repository moves the tokens, and the protocol adapter copies the state; neither is this flag), conversion (what the soft migration permits, not the permission)
 
 **Environment**:

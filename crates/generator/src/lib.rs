@@ -1,5 +1,5 @@
 //! The rules that make the entries of a kind tree. The caller reads the inputs: the supported tokens, the circuit
-//! versions and the deployment records.
+//! versions, the migrated chains and the deployment records.
 
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::{
@@ -25,7 +25,8 @@ pub struct GenericCallCircuit {
 
 /// The ERC20 entries of a chain: one fungibility domain for each token under the label of `forwarder`, the
 /// forwarder of the environment. For a token that soft-migrates, the logic ref of `legacy` under the label of the
-/// legacy forwarder is one more member. Errors if `circuits` fails `circuits::check`.
+/// legacy forwarder is one more member; the caller passes `legacy` only for a migrated chain. Errors if `circuits`
+/// fails `circuits::check`.
 pub fn erc20_entries(
     tokens: &[Token],
     circuits: &[CircuitVersion],
