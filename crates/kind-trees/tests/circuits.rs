@@ -1,6 +1,7 @@
 use anoma_risc0_kind_trees::Error;
 use anoma_risc0_kind_trees::circuits::*;
 use risc0_zkvm::Digest;
+use serde_json::{Value, json};
 
 /// A circuit version whose logic ref differs from that of each version with another `seed`.
 fn circuit(version: &str, seed: u8, status: Status) -> CircuitVersion {
@@ -126,5 +127,48 @@ fn check_rejects_an_active_version_below_a_listed_version() {
         check(&list),
         Err(Error::ActiveCircuitVersionNotHighest { active, highest })
             if active == "1.0.0" && highest == "2.0.0"
+    ));
+}
+
+/// Lists in the format of `circuit-versions.json`, with a `_comment` at each place the file may carry one.
+fn file() -> Value {
+    json!({
+        "_comment": "the circuit versions of each resource type",
+        "ERC20Resource": [{
+            "_comment": "the circuit that the legacy forwarders accept",
+            "version": "1.0.0",
+            "logic_ref": Digest::from_bytes([1; 32]).to_string(),
+            "status": "active",
+        }],
+        "SPLTokenResource": [],
+    })
+}
+
+#[test]
+fn circuit_versions_from_json_reads_the_lists_and_skips_the_comments() {
+    let versions = CircuitVersions::from_json(&file().to_string()).unwrap();
+    assert_eq!(versions.erc20, [circuit("1.0.0", 1, Status::Active)]);
+    assert_eq!(versions.spl_token, []);
+}
+
+#[test]
+fn circuit_versions_from_json_rejects_an_unknown_field_of_a_version() {
+    let mut file = file();
+    file["ERC20Resource"][0]["denied"] = true.into();
+    assert!(matches!(
+        CircuitVersions::from_json(&file.to_string()),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("unknown field `denied`")
+    ));
+}
+
+/// A list that the crate does not read would give no entries.
+#[test]
+fn circuit_versions_from_json_rejects_an_unknown_list() {
+    let mut file = file();
+    file["GenericCallResource"] = json!([]);
+    assert!(matches!(
+        CircuitVersions::from_json(&file.to_string()),
+        Err(Error::InvalidJson(error))
+            if error.to_string().contains("unknown field `GenericCallResource`")
     ));
 }

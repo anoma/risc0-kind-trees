@@ -16,11 +16,11 @@ use anomapay_erc20_forwarder_bindings::addresses::{
 use anomapay_spl_token_forwarder_client::addresses::{
     Environment as SolanaEnvironment, spl_token_forwarder_address,
 };
-use common::own_kind;
+use common::{by_chain, own_kind};
 use k256::EncodedPoint;
 use risc0_zkvm::Digest;
 use risc0_zkvm::sha::{Impl, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A kind, written as its `(logic_ref, label_ref)`.
 type Kind = (Digest, Digest);
@@ -514,4 +514,47 @@ fn aliases_lists_only_the_entries_assigned_another_kind() {
     };
     let tree = Tree::new(vec![own_kind(1), alias.clone()]).unwrap();
     assert_eq!(tree.aliases(), [&alias]);
+}
+
+/// A root in the format of `roots.json`, with the `_comment` that names its chain.
+fn chain_root() -> serde_json::Value {
+    serde_json::json!({ "_comment": "the chain name", "root": Digest::from_bytes([1; 32]).to_string() })
+}
+
+#[test]
+fn roots_from_json_reads_the_root_of_each_chain() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    assert_eq!(
+        roots_from_json(&by_chain(&[(&sepolia, &chain_root())])).unwrap(),
+        BTreeMap::from([(sepolia, Digest::from_bytes([1; 32]))])
+    );
+}
+
+#[test]
+fn roots_from_json_rejects_a_chain_listed_twice() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    assert!(matches!(
+        roots_from_json(&by_chain(&[(&sepolia, &chain_root()), (&sepolia, &chain_root())])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("duplicate key")
+    ));
+}
+
+#[test]
+fn roots_from_json_rejects_a_chain_that_chain_does_not_know() {
+    let unknown = Caip2ChainId::eip155(u64::MAX);
+    assert!(matches!(
+        roots_from_json(&by_chain(&[(&unknown, &chain_root())])),
+        Err(Error::UnknownChain(chain)) if chain == unknown
+    ));
+}
+
+#[test]
+fn roots_from_json_rejects_an_unknown_field() {
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    let mut root = chain_root();
+    root["block"] = 1.into();
+    assert!(matches!(
+        roots_from_json(&by_chain(&[(&sepolia, &root)])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("unknown field `block`")
+    ));
 }

@@ -13,8 +13,15 @@ pub enum Error {
     },
     #[error("invalid hex digest: {0}")]
     InvalidDigest(String),
-    #[error("invalid tree JSON: {0}")]
-    InvalidTreeJson(#[from] serde_json::Error),
+    #[error("invalid JSON: {0}")]
+    InvalidJson(#[from] serde_json::Error),
+    #[error("invalid tokens JSON for {chain}: {reason}")]
+    InvalidTokenSection {
+        chain: Caip2ChainId,
+        reason: serde_json::Error,
+    },
+    #[error("the token {token} is listed twice on {chain}")]
+    DuplicateToken { chain: Caip2ChainId, token: String },
     #[error("the kind ({logic_ref}, {label_ref}) is listed twice")]
     DuplicateKind {
         logic_ref: Digest,

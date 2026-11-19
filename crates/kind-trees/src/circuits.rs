@@ -26,26 +26,64 @@ pub enum Status {
 
 /// One listed version of the ERC20 transfer circuit.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(from = "CircuitVersionJson")]
 pub struct CircuitVersion {
     /// The circuit's release version. The crate that ships it can carry another version.
     pub version: String,
     /// The circuit's verifying key, which every resource of this version carries as its logic ref.
-    #[serde(with = "hex_digest")]
     pub logic_ref: Digest,
     pub status: Status,
 }
 
-#[derive(Deserialize)]
-struct File {
+/// The listed circuit versions of each resource type, in file order. The `_comment` is review context.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CircuitVersions {
+    _comment: Option<String>,
     #[serde(rename = "ERC20Resource")]
-    erc20: Vec<CircuitVersion>,
+    pub erc20: Vec<CircuitVersion>,
     #[serde(rename = "SPLTokenResource")]
-    spl_token: Vec<CircuitVersion>,
+    pub spl_token: Vec<CircuitVersion>,
 }
 
-static FILE: LazyLock<File> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../data/circuit-versions.json"))
-        .expect("circuit-versions.json: invalid JSON")
+impl CircuitVersions {
+    /// Reads lists in the format of `circuit-versions.json`. Rejects a field that the format does not have.
+    pub fn from_json(json: &str) -> Result<Self> {
+        Ok(serde_json::from_str(json)?)
+    }
+}
+
+/// A circuit version's form in the file. The `_comment` is review context.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CircuitVersionJson {
+    _comment: Option<String>,
+    version: String,
+    #[serde(with = "hex_digest")]
+    logic_ref: Digest,
+    status: Status,
+}
+
+impl From<CircuitVersionJson> for CircuitVersion {
+    fn from(
+        CircuitVersionJson {
+            version,
+            logic_ref,
+            status,
+            ..
+        }: CircuitVersionJson,
+    ) -> Self {
+        Self {
+            version,
+            logic_ref,
+            status,
+        }
+    }
+}
+
+static FILE: LazyLock<CircuitVersions> = LazyLock::new(|| {
+    CircuitVersions::from_json(include_str!("../data/circuit-versions.json"))
+        .unwrap_or_else(|error| panic!("circuit-versions.json: {error}"))
 });
 
 /// The listed ERC20 circuit versions, in file order.

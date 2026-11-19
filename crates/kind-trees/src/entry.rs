@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 /// A kind, written as its `(logic_ref, label_ref)`, and the kind base it is assigned.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Entry {
     /// Review context for the entry; not covered by the root.
     #[serde(rename = "_metadata", default, skip_serializing_if = "Option::is_none")]
@@ -26,7 +27,7 @@ pub struct Entry {
 /// What a kind belongs to: the circuit version behind `logic_ref`, and the deployment behind `label_ref`.
 /// The root covers none of it, so it stays free to carry whatever a reviewer needs.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", deny_unknown_fields)]
 pub enum Metadata {
     /// One supported token behind an ERC20 forwarder. `forwarder` is the address inside this kind's label. On a
     /// member under the legacy forwarder's label it is the legacy ERC20 forwarder, whose tokens move to the
@@ -81,6 +82,7 @@ impl Metadata {
 /// The kind an alias takes its kind base from: the active circuit version under the label of the environment's
 /// forwarder. Written into `_metadata`, so an alias says what it is a second name for.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AliasOf {
     pub version: String,
     #[serde(with = "hex_digest")]

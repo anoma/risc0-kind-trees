@@ -5,8 +5,11 @@
 
 use crate::error::{Error, Result};
 use alloy_chains::NamedChain;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::rust::maps_duplicate_key_is_error;
 use solana_cluster_type::ClusterType;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::str::FromStr;
 
@@ -260,4 +263,15 @@ impl fmt::Display for Chain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
     }
+}
+
+/// Reads a JSON object keyed by CAIP-2 chain ID, and rejects a chain listed twice, of which a plain JSON reader keeps
+/// only the last.
+pub(crate) fn by_chain_from_json<V: DeserializeOwned>(
+    json: &str,
+) -> serde_json::Result<BTreeMap<Caip2ChainId, V>> {
+    let mut deserializer = serde_json::Deserializer::from_str(json);
+    let by_chain = maps_duplicate_key_is_error::deserialize(&mut deserializer)?;
+    deserializer.end()?;
+    Ok(by_chain)
 }
