@@ -25,7 +25,7 @@ crates/kind-trees/             the library: the types, the root, the token list 
 │       └── production/
 └── src/
 crates/generator/              the generator, not published: writes data/generated/ from the inputs and the deployment records
-crates/integration-test/       on-chain token, forwarder, migrated chain and Solana cluster checks, promotion freshness and soft-migration gates, arm-risc0 cross-check
+crates/integration-test/       on-chain token, forwarder, migrated chain and Solana cluster checks, promotion freshness, version and soft-migration gates, arm-risc0 cross-check
 docs/adr/                      the decisions behind this layout
 ```
 
