@@ -1,0 +1,133 @@
+//! Every ERC20 and SPL token member of a generated tree balances the active member of its fungibility domain in a
+//! compliance unit, whether the tree lists the active member or the circuit computes its kind base by hash to curve.
+//! The resources take their labels from their transfer circuit's derivation, and the compliance constraints take their
+//! kinds from the tree, so the generated keys and kind bases are checked against both circuits. It needs no chain.
+
+use anoma_risc0_kind_trees::tree::{production, staging};
+use anoma_risc0_kind_trees::{Entry, Metadata};
+use anoma_rm_risc0::Digest;
+use anoma_rm_risc0::compliance::{self, KindTreeEntry};
+use anoma_rm_risc0::kind_tree::KindTree;
+use anoma_rm_risc0::nullifier_key::NullifierKey;
+use anoma_rm_risc0::resource::{Resource, ResourceWitness, ResourceWitnessConsumed};
+
+/// A resource kind, written as its `(logic_ref, label_ref)`.
+type Kind = (Digest, Digest);
+
+/// The kind of this member's resources: its logic, and the label its transfer circuit derives for its token.
+fn resource_kind(entry: &Entry) -> Option<Kind> {
+    let label_ref = match entry.metadata.as_ref()? {
+        Metadata::Erc20 {
+            token, forwarder, ..
+        } => anomapay_erc20_witness::calculate_label_ref(forwarder.as_slice(), token.as_slice()),
+        Metadata::SplToken {
+            mint, forwarder, ..
+        } => anomapay_solana_transfer_witness::calculate_label_ref(
+            forwarder.as_bytes(),
+            mint.as_bytes(),
+        ),
+        Metadata::GenericCall { .. } => return None,
+    };
+    Some((entry.logic_ref, label_ref))
+}
+
+/// The kind this entry takes its kind base from: the kind its `alias_of` names, or its own.
+fn active_kind(entry: &Entry) -> Kind {
+    match entry.metadata.as_ref().and_then(Metadata::alias_of) {
+        Some(alias_of) => (alias_of.logic_ref, alias_of.label_ref),
+        None => (entry.logic_ref, entry.label_ref),
+    }
+}
+
+/// The delta of a unit that consumes one unit of `consumed` and creates one unit of `created`. `rcv` is fixed to 1, so
+/// two deltas differ only in the kind bases the unit looks up.
+fn delta(consumed: Kind, created: Kind, tree: &[KindTreeEntry]) -> ([u32; 8], [u32; 8]) {
+    let nf_key = NullifierKey::from_bytes([1; 32]);
+    let nk_commitment = nf_key.commit();
+    let resource = |(logic_ref, label_ref): Kind, nonce| Resource {
+        logic_ref,
+        label_ref,
+        quantity: 1,
+        value_ref: Digest::default(),
+        is_ephemeral: true,
+        nonce,
+        nk_commitment,
+        rand_seed: [0; 32],
+    };
+    let consumed = resource(consumed, [0; 32]);
+    let nullifier = consumed.nullifier(&nf_key).expect("a nullifier derives");
+    let nonce = Resource::derive_nonce_from_nullifiers(0, &[nullifier]).expect("a nonce derives");
+    let created = resource(created, nonce);
+    let mut witness = compliance::from_resources(
+        vec![
+            ResourceWitness::Consumed(ResourceWitnessConsumed::from_resource(consumed, nf_key)),
+            ResourceWitness::Created(created),
+        ],
+        &KindTree::from_entries(tree.to_vec()).expect("arm-risc0 accepts the tree"),
+    );
+    let mut rcv = [0; 32];
+    rcv[31] = 1;
+    witness.rcv = rcv.to_vec();
+    let instance = compliance::constrain(&witness).expect("the unit is compliant");
+    (instance.delta_x, instance.delta_y)
+}
+
+#[test]
+fn every_token_member_balances_its_active_member() {
+    let mut aliases = 0;
+    for (module, trees) in [
+        ("staging", staging::trees()),
+        ("production", production::trees()),
+    ] {
+        for (chain, tree) in trees {
+            let entries: Vec<KindTreeEntry> = tree
+                .entries()
+                .iter()
+                .map(|entry| KindTreeEntry {
+                    logic_ref: entry.logic_ref,
+                    label_ref: entry.label_ref,
+                    kind_base: entry.kind_base.clone(),
+                })
+                .collect();
+            for entry in tree.entries() {
+                let Some(member) = resource_kind(entry) else {
+                    continue;
+                };
+                assert_eq!(
+                    member.1, entry.label_ref,
+                    "{module} {chain}: the transfer circuit labels a resource of {} differently",
+                    entry.label_ref
+                );
+                let active = active_kind(entry);
+                let balanced = delta(active, active, &entries);
+                assert_eq!(
+                    delta(member, active, &entries),
+                    balanced,
+                    "{module} {chain}: {} does not balance its active member",
+                    entry.label_ref
+                );
+                if entry.is_alias() {
+                    aliases += 1;
+                    let without_active_entry: Vec<KindTreeEntry> = entries
+                        .iter()
+                        .filter(|listed| (listed.logic_ref, listed.label_ref) != active)
+                        .cloned()
+                        .collect();
+                    assert_eq!(
+                        delta(member, active, &without_active_entry),
+                        delta(active, active, &without_active_entry),
+                        "{module} {chain}: {} does not balance its active member when the tree has no entry for it",
+                        entry.label_ref
+                    );
+                    assert_ne!(
+                        delta(member, active, &[]),
+                        delta(active, active, &[]),
+                        "{module} {chain}: {} balances its active member without the tree",
+                        entry.label_ref
+                    );
+                }
+            }
+        }
+    }
+    assert!(aliases > 0, "the trees carry an alias");
+}

@@ -1,0 +1,47 @@
+use alloy::primitives::Address;
+use anoma_risc0_kind_trees::SolanaAddress;
+use anoma_risc0_kind_trees::kind::*;
+use risc0_zkvm::Digest;
+
+#[test]
+fn the_spl_token_label_is_sha256_over_the_program_id_and_the_mint() {
+    let forwarder: SolanaAddress = "5CrHbBeHjg53UyL3Htn9dCYYTy68fMcrbDoeAdo4yQrx"
+        .parse()
+        .unwrap();
+    let mint: SolanaAddress = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr"
+        .parse()
+        .unwrap();
+    assert_eq!(
+        spl_token_label_ref(&forwarder, &mint).to_string(),
+        "53dcbb3ebad803b9f20fc2457f1271b2981e52ed602c240cfbbfafb1d58f7b7a"
+    );
+}
+
+#[test]
+fn the_label_is_sha256_over_the_two_addresses() {
+    let forwarder: Address = "0xE54182d915dE447deFc4A17Ec1D4E0dc627551F7"
+        .parse()
+        .unwrap();
+    let token: Address = "0x4200000000000000000000000000000000000006"
+        .parse()
+        .unwrap();
+    assert_eq!(
+        erc20_label_ref(&forwarder, &token).to_string(),
+        "55008fad9bfccef776960bfca715e365cfba843cfb947190fafc69e4d9fac674"
+    );
+}
+
+/// The resource machine accepts only this encoding of a kind base.
+#[test]
+fn point_is_an_uncompressed_sec1_curve_point() {
+    use k256::elliptic_curve::sec1::FromEncodedPoint;
+    use k256::{EncodedPoint, ProjectivePoint};
+
+    let point = point(&Digest::default(), &Digest::default());
+    assert_eq!(point.len(), 65);
+    assert_eq!(point[0], 0x04, "the SEC1 tag of an uncompressed point");
+    let encoded = EncodedPoint::from_bytes(&point).unwrap();
+    assert!(bool::from(
+        ProjectivePoint::from_encoded_point(&encoded).is_some()
+    ));
+}

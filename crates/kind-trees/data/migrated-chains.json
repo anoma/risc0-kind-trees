@@ -1,0 +1,5 @@
+{
+  "_comment": "The migrated chains of each environment: the chains on which its protocol adapter copied the state of the legacy protocol adapter. Only on these chains do the trees list the members under the label of the legacy ERC20 forwarder. A chain may be listed before its protocol adapter is deployed.",
+  "staging": ["eip155:143", "eip155:11155111"],
+  "production": ["eip155:1", "eip155:56", "eip155:143", "eip155:8453", "eip155:42161"]
+}

@@ -1,51 +1,103 @@
-# Anoma Kind Tables
+# Anoma Kind Trees
 
-The kind tables the Anoma protocol adapters are committed to, one per chain per environment, and the supported-token list they are built from.
+The kind trees the Anoma protocol adapters are committed to, one per chain per environment, and the supported-token list they are built from.
 
 ## Language
 
 **Kind**:
-The fungibility domain of a resource — an elliptic curve point that the compliance circuit uses as the binding generator for that resource's quantity. Two resources balance against each other if and only if they share a kind.
-_Avoid_: type, asset, denomination
+The hash of a resource's logic ref and label ref, as an elliptic curve point. A resource's commitment covers both, so its kind is fixed when it is created. A kind tree is indexed by kind, written as the pair.
+_Avoid_: type, asset, denomination, key
+
+**Kind base**:
+The point the compliance circuit uses as the binding generator for a resource's quantity in the delta: the one the tree in force assigns to the resource's kind, or the kind itself when the tree has no entry for it. Two resources balance against each other if and only if their kind bases are equal.
+_Avoid_: kind point, point (on its own), generator
 
 **Logic ref**:
-The verifying key of the circuit that governs a resource. One half of the key that names a kind.
-_Avoid_: circuit ID, image ID, VK (all correct upstream, but this repo says logic ref because that is the field name a kind is keyed by)
+The verifying key of the circuit that governs a resource. With the label ref, it fixes the resource's kind.
+_Avoid_: circuit ID, image ID, VK (all correct upstream, but this repo says logic ref because that is the field name a kind is written with)
 
 **Label ref**:
-The other half of the key that names a kind, distinguishing instances that share one logic — for an ERC20 resource, the forwarder and token it belongs to.
+The other half of what a kind is hashed from, distinguishing instances that share one logic — for an ERC20 resource, the forwarder and token it belongs to; for an SPL token resource, the forwarder program and mint.
 
-**Kind table**:
-The mapping from `(logic ref, label ref)` keys to kinds that one protocol adapter is committed to. Exactly one per protocol adapter, and therefore one per chain per environment.
-_Avoid_: kind registry, kind map, lookup table
+**Kind tree**:
+The mapping from kinds to kind bases that one protocol adapter is committed to. Exactly one per protocol adapter, and therefore one per chain per environment.
+_Avoid_: kind table, kind registry, kind map, lookup table
 
-**Chain table**:
-A kind table named by the chain it belongs to. The unit this repo generates, reviews and publishes.
+**Chain tree**:
+A kind tree named by the CAIP-2 chain ID of the chain it belongs to. The unit this repo generates, reviews and publishes.
+
+**CAIP-2 chain ID**:
+The name of a chain in any chain family: a namespace and a reference joined by a colon, as CAIP-2 defines it. `eip155:11155111` is Sepolia, and `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` is Solana. A Solana cluster's reference is the first 32 characters of its base58 genesis hash.
+_Avoid_: chain ID (on its own, which names the EIP-155 number of an EVM chain), network, cluster name (a name such as `devnet` is the review comment, not the key)
 
 **Entry**:
-One row of a kind table: a key and the kind it names.
+The data behind one leaf of a kind tree: a kind, written as its `(logic ref, label ref)`, and the kind base it is assigned.
 
-**Canonical entry**:
-An entry whose kind is the one the key hashes to. It changes nothing about what a transaction may do — the circuit derives the same kind without it — and exists only to spare the circuit that derivation.
-_Avoid_: normal entry, plain entry
+**Fungibility domain**:
+The resources whose kind bases are equal, and the kinds the tree assigns that kind base to. On this tree that is one forwarder holding one token on one chain, together with every kind whose resources those tokens back. Their kind base is the kind of the active circuit version under the label of the environment's forwarder, and every other member is an alias of it.
+_Avoid_: domain, alias set, anchor
+
+**Member**:
+A kind inside a fungibility domain: one circuit version under one forwarder's label, assigned the fungibility domain's kind base. Every member except the active version under the label of the environment's forwarder is an alias and has an entry. The active member has an entry only if its token asks for a precomputed kind base.
 
 **Alias**:
-An entry whose kind is *not* the one its key hashes to, so that two keys name one kind and their resources become fungible. The migration path from one resource logic version to its successor, and the only entry a reviewer must read.
-_Avoid_: override, remap, redirect
+An entry assigned another kind as its kind base, not its own. The tree makes two kinds share one kind base, so their resources are fungible. Every member of a fungibility domain is one, except the active version under the label of the environment's forwarder. Its `alias_of` names the kind it takes its kind base from. Only the tree can express an alias, and an alias is a permission to create tokens of its fungibility domain: the only entry a reviewer must read.
+_Avoid_: override, remap, redirect, canonical (for the others: an entry assigned its own kind)
 
-**Kind table commitment**:
-The digest a protocol adapter stores and every compliance proof reproduces, covering every entry and their order. The value this repo exists to publish.
-_Avoid_: kind table hash, table root
+**Conversion**:
+A transaction that consumes a resource of one member of a fungibility domain and creates one of another member. The two balance because the tree assigns both members one kind base.
+_Avoid_: migration (the forwarder repository moves the tokens, and the protocol adapter copies the state)
+
+**Soft migration**:
+The conversion of the legacy-forwarder resources and of the deprecated versions' resources into resources of the active member, before or while they leave through the environment's forwarder. Each owner converts their own resources, in their own transactions. It moves no tokens between forwarders and copies no state.
+_Avoid_: migration (on its own: the forwarder repository moves the tokens, and the protocol adapter copies the state)
+
+**Precomputed kind base**:
+An entry that assigns a kind its own kind base, so that the compliance circuit makes an in-circuit check of a Merkle path to the point instead of computing it by hash to curve. Each time the entry count passes a power of two, the tree gains a level, and every Merkle path a proof checks gets one more hash. So the tree carries one only where proofs gain from it: the generic call kind, and the active kind of each supported token that `data/tokens.json` marks with `precompute_kind_base`. Any other kind that is not an alias has no entry, and the circuit computes its kind base.
+_Avoid_: precomputed kind point, cached kind, fast kind, supported kind (a token without an entry is still supported)
+
+**Circuit version**:
+One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-versions.json` with its logic ref and a status. The two lists follow the same rules, each over its own chains. Exactly one version is **active**: under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources. Every other is **deprecated**: an alias of the active one, which the backend consumes and converts. The active version is the highest listed, and an older version never becomes active again. Every listed version is a member of every fungibility domain of its resource type under the label of the environment's forwarder, except a version that only the legacy ERC20 forwarders accept (`legacy_forwarders_only`). A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder.
+_Avoid_: succession, upgrade, migration (the migration is what listing enables, not the record of it), inherit (nothing passes from one version to another — both kinds are assigned one kind base)
+
+**Legacy protocol adapter**:
+The protocol adapter that a chain ran before its upgradeable protocol adapter: one immutable contract, with no kind tree, on each chain that ran one. No new one is deployed. On a migrated chain, it is stopped, and the protocol adapter holds a copy of its state.
+_Avoid_: v1 protocol adapter, immutable protocol adapter
+
+**Legacy ERC20 forwarder**:
+The ERC20 forwarder that ran with a chain's legacy protocol adapter: one immutable contract. No new one is deployed. On a migrated chain, the logic ref it accepts is a member under its label of the fungibility domain of each token that soft-migrates, so these resources convert and leave through the environment's forwarder. Recorded in the forwarder repository's deployment record, never here.
+_Avoid_: V1 forwarder, retired forwarder, old forwarder, immutable ERC20 forwarder
+
+**Legacy-forwarder resource**:
+An ERC20 resource whose label names a legacy ERC20 forwarder.
+_Avoid_: V1 resource, immutable-forwarder resource, 2.0.0 resource (a circuit version names a logic ref, and a logic ref does not tell a legacy-forwarder resource from one of the environment's forwarder)
+
+**Migrated chain**:
+A chain on which an environment's protocol adapter copied the state of the legacy protocol adapter. `data/migrated-chains.json` lists them per environment, so one chain can be migrated in one environment and start fresh in the other.
+
+**Kind tree root**:
+The Merkle root over a tree's entries that a protocol adapter stores and every compliance proof that takes a kind from the tree reproduces. The value this repo exists to publish.
+_Avoid_: kind table root, kind tree hash, kind tree commitment
+
+**In-circuit check**:
+A check that a circuit makes: a proof of the circuit is valid only if the check holds. For example, the compliance circuit checks that all kind paths of a compliance unit give the same root.
+
+**Out-of-circuit check**:
+A check outside the circuits, for example the check of the protocol adapter that the kind tree root of a transaction is its stored root or the root of the empty tree.
 
 **Supported token**:
-An ERC20 contract this project maintains kinds for, on a named chain. Being supported is a standing commitment and does not depend on where anything is deployed.
+An ERC20 contract or SPL token mint this project maintains kinds for, on a named chain. Being supported is a standing commitment and does not depend on where anything is deployed. Each one says whether the tree precomputes its active kind base, and each ERC20 token whether its legacy-forwarder resources can soft-migrate; Solana has no legacy forwarder.
+
+**Soft migration from the legacy ERC20 forwarder**:
+Whether the legacy ERC20 forwarder's label joins the fungibility domain of one supported token, which makes that token's legacy-forwarder resources fungible with the resources of the environment's forwarder, so they convert and leave. `data/tokens.json` states it per chain and per token in `soft_migrate_from_legacy_forwarder`, and a token set to `true` gets a member under the legacy ERC20 forwarder's label only on a migrated chain.
+_Avoid_: V1 fungibility, migration (on its own: the forwarder repository moves the tokens, and the protocol adapter copies the state; neither is this flag), conversion (what the soft migration permits, not the permission)
 
 **Environment**:
-One of the two protocol adapter deployments a kind table can be installed on, each tracking a branch. Says which deployment, never which chain.
+One of the two protocol adapter deployments a kind tree can be installed on, each tracking a branch. Says which deployment, never which chain.
 _Avoid_: network, deployment target
 
 **Staging / Production**:
 The two environments, matching the protocol adapter's. Staging tracks `staging`, production tracks `main`.
 
 **Promotion gate**:
-The assertion, run only on a pull request into an environment's branch, that every protocol adapter in that environment already stores the commitment this source computes.
+The assertion, run only on a pull request into an environment's branch, that every protocol adapter in that environment already stores the root this source computes.

@@ -1,0 +1,36 @@
+[package]
+name = "anoma-risc0-kind-trees"
+version.workspace = true
+description = "The kind trees the Anoma protocol adapters are committed to, and the supported-token list they are built from."
+keywords.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+edition.workspace = true
+
+[features]
+# Converts an entry into the resource machine's kind tree entry, for a consumer that loads a tree to prove.
+arm = ["dep:anoma-rm-risc0"]
+
+[dependencies]
+alloy = { workspace = true }
+alloy-chains = { workspace = true }
+anoma-rm-risc0 = { workspace = true, optional = true }
+bs58 = { workspace = true }
+k256 = { workspace = true }
+risc0-zkvm = { workspace = true }
+semver = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+solana-cluster-type = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+hex = { workspace = true }
+# The deployment records the offline tree tests read the environments' protocol adapters and forwarders from.
+anoma-generic-call-forwarder-bindings = { workspace = true }
+anoma-pa-solana-client = { workspace = true }
+anomapay-erc20-forwarder-bindings = { workspace = true }
+anomapay-spl-token-forwarder-client = { workspace = true }
