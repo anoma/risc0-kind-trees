@@ -1442,9 +1442,9 @@ dependencies = [
 
 [[package]]
 name = "anoma-pa-solana-client"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "271c88c8abf60670860c9b810dcf59d1a7fec7c87a038f27e36423b9f40a3ddf"
+checksum = "ce8241de52afd6e3d494ed7b872c13781b25709f2e7a0f8857fad27f8657a552"
 dependencies = [
  "anchor-lang",
  "anoma-rm-risc0",
@@ -1675,9 +1675,9 @@ dependencies = [
 
 [[package]]
 name = "anomapay-spl-token-forwarder-client"
-version = "0.11.1"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79fea38f2086511e336ea8dde501b442faa84d36723582e8173025530060bf9f"
+checksum = "5dde331ca2003df7582be561adedf8a744076f48711ca16f856cb6b09d8194df"
 dependencies = [
  "anchor-lang",
  "anoma-pa-solana-client",
@@ -6585,7 +6585,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -6598,7 +6598,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
