@@ -164,7 +164,8 @@ environment_module!(
     ("eip155", "11155111"),
     ("eip155", "143"),
     ("eip155", "56"),
-    ("eip155", "84532")
+    ("eip155", "84532"),
+    ("solana", "EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
 );
 environment_module!(
     production,
