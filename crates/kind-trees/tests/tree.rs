@@ -320,47 +320,6 @@ fn tree_accepts_an_evm_chain() {
     ));
 }
 
-/// The staging environment records the solana-devnet tree: the test mint's fungibility domain under the devnet
-/// forwarder's label, one member per listed SPL token circuit version, each deprecated version an alias of the active
-/// one, which keeps its own kind; and nothing else.
-#[test]
-fn staging_records_the_solana_devnet_tree() {
-    let devnet = SolanaCluster::Devnet;
-    let tree = staging::tree(devnet).expect("solana-devnet is recorded in staging");
-    let listed = circuits::spl_token();
-    assert_eq!(
-        tree.entries().len(),
-        listed.len(),
-        "one member per listed SPL token circuit version"
-    );
-    let active = circuits::spl_token_active();
-    for circuit in listed {
-        let member = tree
-            .entries()
-            .iter()
-            .find(|entry| entry.logic_ref == circuit.logic_ref)
-            .unwrap_or_else(|| panic!("{} has no member", circuit.version));
-        assert!(
-            matches!(member.metadata, Some(Metadata::SplToken { .. })),
-            "the {} entry is an SPL token member",
-            circuit.version
-        );
-        assert_eq!(
-            member.label_ref.to_string(),
-            "74370e1925e0d3b020ed3d26e449eafe6125aa4bb2d6c42c0cab047383caceb8",
-            "the {} member's label is sha256(devnet forwarder ‖ test mint)",
-            circuit.version
-        );
-        assert_eq!(
-            member.is_alias(),
-            circuit.logic_ref != active.logic_ref,
-            "{}: the active version keeps its own kind, every other is an alias",
-            circuit.version
-        );
-    }
-    assert_eq!(staging::root(devnet).unwrap(), tree.root());
-}
-
 /// The macro invocation lists the tree files by hand, so pin it to `roots.json`.
 #[test]
 fn embedded_trees_match_the_recorded_roots() {
