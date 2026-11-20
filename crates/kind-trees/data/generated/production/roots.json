@@ -1,1 +1,22 @@
-{}
+{
+  "eip155:1": {
+    "_comment": "mainnet",
+    "root": "049f360ae0bbcdd84d877c6c03046d8be7989c0a212b934ef4c4549e36d68378"
+  },
+  "eip155:143": {
+    "_comment": "monad",
+    "root": "d8217c4a51763f5c1bc90fb702114b13d6009b6d09b10ec93ef362bb1f17bb31"
+  },
+  "eip155:42161": {
+    "_comment": "arbitrum",
+    "root": "be8ab96041aab321b8d8f21579d1e15dce6f263ee9dab089da622c85b44ad366"
+  },
+  "eip155:56": {
+    "_comment": "bsc",
+    "root": "4c84da859d8ef8ad820738a1496ea74a3e202026a84f151cf2ce862059c1c0e9"
+  },
+  "eip155:8453": {
+    "_comment": "base",
+    "root": "fd6a6baaf90b2ce32b1110ccf4c811920f2d690949c05be555b0f88913d8225e"
+  }
+}

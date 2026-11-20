@@ -163,7 +163,14 @@ environment_module!(
     staging,
     ("eip155", "11155111"),
     ("eip155", "143"),
-    ("eip155", "84532"),
-    ("solana", "EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+    ("eip155", "56"),
+    ("eip155", "84532")
 );
-environment_module!(production);
+environment_module!(
+    production,
+    ("eip155", "1"),
+    ("eip155", "143"),
+    ("eip155", "42161"),
+    ("eip155", "56"),
+    ("eip155", "8453")
+);
