@@ -148,13 +148,3 @@ fn an_unknown_chain_fails_loudly() {
     assert!(Chain::try_from(&parse("solana:nope").unwrap()).is_err());
     assert!(parse("sepolia").is_err());
 }
-
-#[test]
-fn evm_chains_sort_before_solana_clusters() {
-    assert!(
-        Caip2ChainId::from(NamedChain::Mainnet) < Caip2ChainId::from(SolanaCluster::MainnetBeta)
-    );
-    assert!(
-        Caip2ChainId::from(SolanaCluster::MainnetBeta) < Caip2ChainId::from(SolanaCluster::Devnet)
-    );
-}

@@ -3,8 +3,8 @@
 //! reads one file. A compliance unit takes its tree as an argument, so the conversion test covers every recorded tree.
 
 use alloy_chains::NamedChain;
+use anoma_risc0_kind_trees::Caip2ChainId;
 use anoma_risc0_kind_trees::tree::{production, staging};
-use anoma_risc0_kind_trees::{Caip2ChainId, Tree};
 use anoma_rm_risc0::Digest;
 use anoma_rm_risc0::compliance::{self, KindTreeEntry};
 use anoma_rm_risc0::constants::{init_kind_tree_from_file, kind_tree_root};
@@ -55,7 +55,7 @@ fn unit_root(tree: &KindTree) -> Digest {
 #[test]
 fn the_local_root_matches_the_circuit_loader() {
     let path = staging_tree(&NamedChain::Sepolia.into());
-    let tree = Tree::load(&path).expect("the staging sepolia tree exists");
+    let tree = staging::tree(NamedChain::Sepolia).expect("staging records the sepolia tree");
 
     init_kind_tree_from_file(&path).expect("the upstream loader accepts the generated tree");
     assert_eq!(
@@ -71,7 +71,7 @@ fn every_converted_tree_commits_to_its_recorded_root() {
         ("production", production::roots(), production::trees()),
     ] {
         for (chain, tree) in trees {
-            let entries = tree.entries.iter().map(KindTreeEntry::from).collect();
+            let entries = tree.entries().iter().map(KindTreeEntry::from).collect();
             let converted =
                 KindTree::from_entries(entries).expect("arm-risc0 accepts the converted tree");
             assert_eq!(

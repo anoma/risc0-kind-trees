@@ -10,20 +10,22 @@ The [documentation](./docs/README.md) states what the repository contains and wh
 
 A kind tree maps kinds, written as `(logic_ref, label_ref)`, to kind bases. Its root — the Merkle root that arm-risc0 builds over the entries — is what a protocol adapter stores via `setKindTreeRoot` and what every compliance proof that takes a kind from the tree reproduces. A chain's tree is derived: the generic call entry from the recorded forwarder, and the ERC20 entries of each supported token from the recorded ERC20 forwarder. The padding kind has no entry: nothing converts padding resources and their speed does not matter, so the compliance circuit computes their kind base, and the trees do not depend on the arm-risc0 release (ADR-0008). The ERC20 entries of one token form a fungibility domain: every listed circuit version under the forwarder's label and, for a token marked for soft migration on a chain that ran a legacy protocol adapter, the legacy ERC20 forwarder's logic ref under its own label, all assigned the kind of the active version under the label of the environment's forwarder, so their resources are fungible. The aliases are always entries. The active version keeps its own kind, which the circuit computes without the tree, so it has an entry only if the token sets `precompute_kind_base`: the circuit then checks a Merkle path to its kind base instead of computing it by hash to curve. Every entry is machine-checked — an alias against its fungibility domain, every other entry against its own kind — and no kind base is authored.
 
-A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. An environment gets a Solana tree for each cluster on which the deployment record of `anoma-pa-solana-client` holds its protocol adapter, and the forwarder program comes from the deployment record of `anomapay-spl-token-forwarder-client`. Both clients come from crates.io. `circuit-versions.json` lists the logic ref of each `anomapay-solana-resource` release. Solana has no generic call forwarder and no legacy protocol adapter, so its trees have neither entry (ADR-0010).
+A Solana cluster's tree is built the same way from different records. Each supported SPL token mint is one fungibility domain under the label `sha256(forwarder program id ‖ mint)`, with every listed SPL token circuit version as a member. An environment gets a Solana tree for each cluster on which the deployment record of `anoma-pa-solana-client` holds its protocol adapter and `tokens.json` lists a mint, and the forwarder program comes from the deployment record of `anomapay-spl-token-forwarder-client`. Both clients come from crates.io. `circuit-versions.json` lists the logic ref of each `anomapay-solana-resource` release. Solana has no generic call forwarder and no legacy protocol adapter, so its trees have neither entry (ADR-0010).
 
 ## Layout
 
 ```
-crates/kind-trees/            the library and the generator
+crates/kind-trees/             the library: the types, the root, the token list and the embedded trees
 ├── data/
 │   ├── tokens.json            authored: the supported tokens, per chain
 │   ├── circuit-versions.json  authored: the ERC20 and SPL token circuit versions, once for every chain
+│   ├── migrated-chains.json   authored: the migrated chains of each environment
 │   └── generated/
 │       ├── staging/           <namespace>_<reference>.json trees + roots.json
 │       └── production/
 └── src/
-crates/integration-test/       on-chain token, forwarder and Solana cluster checks, promotion freshness and soft-migration gates, arm-risc0 cross-check
+crates/generator/              the generator, not published: writes data/generated/ from the inputs and the deployment records
+crates/integration-test/       on-chain token, forwarder, migrated chain and Solana cluster checks, promotion freshness, version and soft-migration gates, arm-risc0 cross-check
 docs/adr/                      the decisions behind this layout
 ```
 
@@ -52,7 +54,7 @@ An entry carries its kind, the kind base it is assigned, and a `_metadata` objec
 }
 ```
 
-That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, all carrying the same `kind_base`. The kind base is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_base`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind base instead of computing it.
+That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, except a version that only the legacy forwarders accept, all carrying the same `kind_base`. The kind base is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_base`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind base instead of computing it.
 
 An alias also says what it is a second name for. Its `alias_of` names the kind it takes its kind base from, so a reviewer reads it without recomputing anything, and its `status` is `deprecated`: a member is `active` if and only if it has no `alias_of`. When version 3.0.0 becomes active, 2.0.0 becomes deprecated, every kind base moves to 3.0.0's kind, and the WETH entry for 2.0.0 becomes this:
 
@@ -88,7 +90,7 @@ Members are never authored. A circuit release is one appended line in [`crates/k
 }
 ```
 
-The generator then writes one more member per token on every chain that has the token, so neither a token nor a chain can be left out, and checks every version whose crate is pinned against the logic ref that crate compiles to. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it stays, even when the protocol adapter denies its logic ref, with entries that nothing can use (ADR-0008).
+The generator then writes one more member per token on every chain that has the token, so neither a token nor a chain can be left out, and checks every version whose crate is pinned against the logic ref that crate compiles to. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it stays, even when the protocol adapter denies its logic ref (ADR-0008). A version marked `legacy_forwarders_only` has members only under the labels of the legacy forwarders, for the tokens that soft-migrate.
 
 ## Workflows
 
@@ -112,7 +114,7 @@ The generator pins the crate of the active version and the crate of the legacy c
    ```toml
    anomapay_erc20_library = "=2.0.0-rc.1"
    ```
-2. If the release has a new crate name, use it in [`crates/kind-trees/Cargo.toml`](crates/kind-trees/Cargo.toml), as the optional dependency and in the `generate` feature list, and in `versions()` and `pinned_erc20_circuits` in [`crates/kind-trees/src/bin/generate.rs`](crates/kind-trees/src/bin/generate.rs).
+2. If the release has a new crate name, use it in [`crates/generator/Cargo.toml`](crates/generator/Cargo.toml), and in `versions()` and `pinned_erc20_circuits` in [`crates/generator/src/main.rs`](crates/generator/src/main.rs).
 3. In [`crates/kind-trees/data/circuit-versions.json`](crates/kind-trees/data/circuit-versions.json), append the version with `"status": "active"` and set the previous active version to `"deprecated"`.
 4. Run `just generate`. Read the diff: one new entry per token on every chain, and every older version's entries now alias the new one.
 5. Commit the edited files together with the regenerated trees.
@@ -123,12 +125,13 @@ An SPL token circuit release appends its version to `SPLTokenResource` in `circu
 
 ### Alias the legacy ERC20 forwarder
 
-On a chain that ran a legacy protocol adapter, the ERC20 forwarder changes once: the legacy ERC20 forwarder is immutable, and the environment's forwarder is a proxy at a new address. Both accept the same logic ref, so a legacy-forwarder resource differs from a resource of the environment's forwarder only in the forwarder inside its label. On every chain that records both forwarders, the generator writes one member under the legacy forwarder's label for each token the list marks for soft migration, an alias of the active version under the label of the environment's forwarder.
+On a chain that ran a legacy protocol adapter, the ERC20 forwarder changes once: the legacy ERC20 forwarder is immutable, and the environment's forwarder is a proxy at a new address. Both accept the same logic ref, so a legacy-forwarder resource differs from a resource of the environment's forwarder only in the forwarder inside its label. On each migrated chain of an environment, the generator writes one member under the legacy forwarder's label for each token the list marks for soft migration, an alias of the active version under the label of the environment's forwarder. A migrated chain is one on which the environment's protocol adapter copied the legacy state. A chain whose protocol adapter starts fresh holds no legacy-forwarder resource, so its tree has no such member.
 
 1. Record the legacy ERC20 forwarder, with the logic ref it accepts, in the `legacy` array of the forwarder repository's `deployments.json`, and release the forwarder bindings.
-2. In [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), set `soft_migrate_from_legacy_forwarder` to `true` for every token whose legacy-forwarder resources must be fungible with those of the environment's forwarder, and to `false` for the rest. A token set to `false`, or missing from the list, gets no member under the legacy forwarder's label, so its legacy-forwarder resources stay in the legacy forwarder. Nothing checks this.
-3. Pin the new bindings and run `just generate`. Read the diff: one member under the legacy forwarder's label per marked token on every chain that records both forwarders.
-4. Commit the edited file together with the regenerated trees.
+2. In [`crates/kind-trees/data/migrated-chains.json`](crates/kind-trees/data/migrated-chains.json), list the chain under each environment whose protocol adapter copies the legacy state. The generator rejects a listed chain that records no legacy ERC20 forwarder. An integration test checks each recorded protocol adapter on a chain with a legacy ERC20 forwarder: it denies the legacy logic ref for created resources if and only if the list names its chain.
+3. In [`crates/kind-trees/data/tokens.json`](crates/kind-trees/data/tokens.json), set `soft_migrate_from_legacy_forwarder` to `true` for every token whose legacy-forwarder resources must be fungible with those of the environment's forwarder, and to `false` for the rest. A token set to `false`, or missing from the list, gets no member under the legacy forwarder's label, so its legacy-forwarder resources stay in the legacy forwarder. Nothing checks this.
+4. Pin the new bindings and run `just generate`. Read the diff: one member under the legacy forwarder's label per marked token on each migrated chain whose environment records its ERC20 forwarder.
+5. Commit the edited files together with the regenerated trees.
 
 A member under the legacy forwarder's label lets a legacy-forwarder resource unwrap from the environment's forwarder. Install the tree while the protocol adapter is paused, and unpause it only after the legacy forwarder's tokens moved to the environment's forwarder (ADR-0008).
 

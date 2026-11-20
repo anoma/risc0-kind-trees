@@ -1,18 +1,142 @@
-use anoma_risc0_kind_trees::SolanaCluster;
+mod common;
+
+use alloy::primitives::Address;
 use anoma_risc0_kind_trees::tokens::*;
+use anoma_risc0_kind_trees::{Caip2ChainId, Error, SolanaCluster};
+use common::by_chain;
+use serde_json::{Value, json};
+
+const DEVNET_MINT: &str = "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr";
+
+fn sepolia() -> Caip2ChainId {
+    "eip155:11155111".parse().unwrap()
+}
+
+fn devnet() -> Caip2ChainId {
+    SolanaCluster::Devnet.into()
+}
+
+fn erc20_token(address: &str) -> Value {
+    json!({
+        "symbol": "TEST",
+        "name": "Test token",
+        "decimals": 6,
+        "address": address,
+        "precompute_kind_base": true,
+        "soft_migrate_from_legacy_forwarder": true,
+    })
+}
+
+fn spl_token(mint: &str) -> Value {
+    json!({
+        "symbol": "TEST",
+        "name": "Test token",
+        "decimals": 6,
+        "mint": mint,
+        "precompute_kind_base": true,
+    })
+}
+
+/// A section with the `_comment` that names its chain.
+fn section(tokens: Vec<Value>) -> Value {
+    json!({ "_comment": "the chain name", "tokens": tokens })
+}
 
 #[test]
-fn the_embedded_list_carries_the_devnet_test_mint_under_its_caip2_key() {
-    let [token] = spl_on(SolanaCluster::Devnet) else {
-        panic!("expected exactly one supported mint on solana-devnet");
-    };
+fn on_lists_no_token_for_a_chain_without_a_section() {
+    let unnamed = Caip2ChainId::eip155(u64::MAX);
+    assert!(!all().contains_key(&unnamed), "premise: no section");
+    assert!(on(unnamed).is_empty());
+}
+
+#[test]
+fn from_json_reads_each_section_as_the_token_type_of_its_chain_family() {
+    let address = Address::repeat_byte(0xab).to_string();
+    let tokens = Tokens::from_json(&by_chain(&[
+        (&sepolia(), &section(vec![erc20_token(&address)])),
+        (&devnet(), &section(vec![spl_token(DEVNET_MINT)])),
+    ]))
+    .unwrap();
+    assert_eq!(tokens.erc20[&sepolia()][0].address.to_string(), address);
     assert_eq!(
-        token.mint.to_string(),
-        "9EHEFzyuY7sZEzTVm7C3uMkNZFMgm5ZeWjGjirZ3MVfr"
+        tokens.spl[&SolanaCluster::Devnet][0].mint.to_string(),
+        DEVNET_MINT
     );
-    assert_eq!(token.decimals, 6);
-    assert!(
-        on(SolanaCluster::Devnet).is_empty(),
-        "a Solana chain has no ERC20 tokens"
+}
+
+#[test]
+fn from_json_rejects_a_chain_listed_twice() {
+    let empty = section(Vec::new());
+    assert!(matches!(
+        Tokens::from_json(&by_chain(&[(&sepolia(), &empty), (&sepolia(), &empty)])),
+        Err(Error::InvalidJson(error)) if error.to_string().contains("duplicate key")
+    ));
+}
+
+#[test]
+fn from_json_rejects_a_chain_that_chain_does_not_know() {
+    let unknown = Caip2ChainId::eip155(u64::MAX);
+    assert!(matches!(
+        Tokens::from_json(&by_chain(&[(&unknown, &section(Vec::new()))])),
+        Err(Error::UnknownChain(chain)) if chain == unknown
+    ));
+}
+
+/// Addresses compare as bytes, so letter case does not hide a repeat.
+#[test]
+fn from_json_rejects_a_token_listed_twice_on_a_chain() {
+    let address = Address::repeat_byte(0xab).to_string();
+    assert_ne!(
+        address,
+        address.to_lowercase(),
+        "premise: the checksum has capitals"
     );
+    let twice = section(vec![
+        erc20_token(&address),
+        erc20_token(&address.to_lowercase()),
+    ]);
+    assert!(matches!(
+        Tokens::from_json(&by_chain(&[(&sepolia(), &twice)])),
+        Err(Error::DuplicateToken { chain, token }) if chain == sepolia() && token == address
+    ));
+}
+
+#[test]
+fn from_json_rejects_a_mint_listed_twice_on_a_cluster() {
+    let twice = section(vec![spl_token(DEVNET_MINT), spl_token(DEVNET_MINT)]);
+    assert!(matches!(
+        Tokens::from_json(&by_chain(&[(&devnet(), &twice)])),
+        Err(Error::DuplicateToken { chain, token }) if chain == devnet() && token == DEVNET_MINT
+    ));
+}
+
+#[test]
+fn from_json_rejects_an_unknown_field_of_a_section() {
+    let mut extra = section(Vec::new());
+    extra["chain"] = "sepolia".into();
+    assert!(matches!(
+        Tokens::from_json(&by_chain(&[(&sepolia(), &extra)])),
+        Err(Error::InvalidTokenSection { chain, reason })
+            if chain == sepolia() && reason.to_string().contains("unknown field `chain`")
+    ));
+}
+
+/// Each token type has only its own fields: nothing reads the flag of an SPL token, which has no legacy forwarder, or
+/// the mint of an ERC20 token.
+#[test]
+fn from_json_rejects_a_field_that_the_token_type_does_not_have() {
+    let mut spl = spl_token(DEVNET_MINT);
+    spl["soft_migrate_from_legacy_forwarder"] = true.into();
+    let mut erc20 = erc20_token(&Address::repeat_byte(0xab).to_string());
+    erc20["mint"] = DEVNET_MINT.into();
+    for (chain, token, field) in [
+        (devnet(), spl, "soft_migrate_from_legacy_forwarder"),
+        (sepolia(), erc20, "mint"),
+    ] {
+        assert!(matches!(
+            Tokens::from_json(&by_chain(&[(&chain, &section(vec![token]))])),
+            Err(Error::InvalidTokenSection { chain: failed, reason })
+                if failed == chain && reason.to_string().contains(&format!("unknown field `{field}`"))
+        ));
+    }
 }

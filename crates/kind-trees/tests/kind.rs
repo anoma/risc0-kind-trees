@@ -1,6 +1,7 @@
 use alloy::primitives::Address;
 use anoma_risc0_kind_trees::SolanaAddress;
 use anoma_risc0_kind_trees::kind::*;
+use risc0_zkvm::Digest;
 
 #[test]
 fn the_spl_token_label_is_sha256_over_the_program_id_and_the_mint() {
@@ -28,4 +29,19 @@ fn the_label_is_sha256_over_the_two_addresses() {
         erc20_label_ref(&forwarder, &token).to_string(),
         "55008fad9bfccef776960bfca715e365cfba843cfb947190fafc69e4d9fac674"
     );
+}
+
+/// The resource machine accepts only this encoding of a kind base.
+#[test]
+fn point_is_an_uncompressed_sec1_curve_point() {
+    use k256::elliptic_curve::sec1::FromEncodedPoint;
+    use k256::{EncodedPoint, ProjectivePoint};
+
+    let point = point(&Digest::default(), &Digest::default());
+    assert_eq!(point.len(), 65);
+    assert_eq!(point[0], 0x04, "the SEC1 tag of an uncompressed point");
+    let encoded = EncodedPoint::from_bytes(&point).unwrap();
+    assert!(bool::from(
+        ProjectivePoint::from_encoded_point(&encoded).is_some()
+    ));
 }

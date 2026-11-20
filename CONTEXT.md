@@ -57,7 +57,7 @@ An entry that assigns a kind its own kind base, so that the compliance circuit m
 _Avoid_: precomputed kind point, cached kind, fast kind, supported kind (a token without an entry is still supported)
 
 **Circuit version**:
-One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-versions.json` with its logic ref and a status. The two lists follow the same rules, each over its own chains. Exactly one version is **active**: under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources. Every other is **deprecated**: an alias of the active one, which the backend consumes and converts. The active version is the highest listed, and an older version never becomes active again. Every listed version is a member of every fungibility domain of its resource type. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder.
+One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-versions.json` with its logic ref and a status. The two lists follow the same rules, each over its own chains. Exactly one version is **active**: under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources. Every other is **deprecated**: an alias of the active one, which the backend consumes and converts. The active version is the highest listed, and an older version never becomes active again. Every listed version is a member of every fungibility domain of its resource type under the label of the environment's forwarder, except a version that only the legacy ERC20 forwarders accept (`legacy_forwarders_only`). A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder.
 _Avoid_: succession, upgrade, migration (the migration is what listing enables, not the record of it), inherit (nothing passes from one version to another — both kinds are assigned one kind base)
 
 **Legacy protocol adapter**:
@@ -65,7 +65,7 @@ The protocol adapter that a chain ran before its upgradeable protocol adapter: o
 _Avoid_: v1 protocol adapter, immutable protocol adapter
 
 **Legacy ERC20 forwarder**:
-The ERC20 forwarder that ran with a chain's legacy protocol adapter: one immutable contract. No new one is deployed. Under its label, the logic ref it accepts is a member of every ERC20 fungibility domain on its chain, so its resources convert and leave through the environment's forwarder. Recorded in the forwarder repository's deployment record, never here.
+The ERC20 forwarder that ran with a chain's legacy protocol adapter: one immutable contract. No new one is deployed. On a migrated chain, the logic ref it accepts is a member under its label of the fungibility domain of each token that soft-migrates, so these resources convert and leave through the environment's forwarder. Recorded in the forwarder repository's deployment record, never here.
 _Avoid_: V1 forwarder, retired forwarder, old forwarder, immutable ERC20 forwarder
 
 **Legacy-forwarder resource**:
@@ -73,7 +73,7 @@ An ERC20 resource whose label names a legacy ERC20 forwarder.
 _Avoid_: V1 resource, immutable-forwarder resource, 2.0.0 resource (a circuit version names a logic ref, and a logic ref does not tell a legacy-forwarder resource from one of the environment's forwarder)
 
 **Migrated chain**:
-A chain whose protocol adapter copied the state of its legacy protocol adapter.
+A chain on which an environment's protocol adapter copied the state of the legacy protocol adapter. `data/migrated-chains.json` lists them per environment, so one chain can be migrated in one environment and start fresh in the other.
 
 **Kind tree root**:
 The Merkle root over a tree's entries that a protocol adapter stores and every compliance proof that takes a kind from the tree reproduces. The value this repo exists to publish.
@@ -89,7 +89,7 @@ A check outside the circuits, for example the check of the protocol adapter that
 An ERC20 contract or SPL token mint this project maintains kinds for, on a named chain. Being supported is a standing commitment and does not depend on where anything is deployed. Each one says whether the tree precomputes its active kind base, and each ERC20 token whether its legacy-forwarder resources can soft-migrate; Solana has no legacy forwarder.
 
 **Soft migration from the legacy ERC20 forwarder**:
-Whether the legacy ERC20 forwarder's label joins the fungibility domain of one supported token, which makes that token's legacy-forwarder resources fungible with the resources of the environment's forwarder, so they convert and leave. `data/tokens.json` states it per chain and per token in `soft_migrate_from_legacy_forwarder`, and only a token set to `true` gets a member under the legacy ERC20 forwarder's label.
+Whether the legacy ERC20 forwarder's label joins the fungibility domain of one supported token, which makes that token's legacy-forwarder resources fungible with the resources of the environment's forwarder, so they convert and leave. `data/tokens.json` states it per chain and per token in `soft_migrate_from_legacy_forwarder`, and a token set to `true` gets a member under the legacy ERC20 forwarder's label only on a migrated chain.
 _Avoid_: V1 fungibility, migration (on its own: the forwarder repository moves the tokens, and the protocol adapter copies the state; neither is this flag), conversion (what the soft migration permits, not the permission)
 
 **Environment**:

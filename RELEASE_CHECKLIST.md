@@ -25,5 +25,5 @@ Changes accumulate on `next` and are promoted through `staging` to `main`, match
 
 ## Publishing the crate
 
-1. Bump the workspace version on `next` and let it ride the same promotion.
+1. Bump the workspace version on `next` and let it ride the same promotion. The promotion into `main` fails on a prerelease version. The promotion into `staging` also takes a release candidate, `-rc.<number>`.
 2. Publish `anoma-risc0-kind-trees` from the `main` merge commit: `just crates-publish --dry-run`, then `just crates-publish`. The crate takes every dependency from crates.io; only the dev-dependencies of the integration test crate, which is not published, pin git tags.

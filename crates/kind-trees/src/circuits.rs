@@ -1,14 +1,18 @@
 //! The ERC20 circuit versions, read from `data/circuit-versions.json`. Every listed version is a member of every
-//! ERC20 fungibility domain, so its resources are fungible with every other listed version's behind the same
-//! forwarder. Exactly one version is active: under the label of the environment's forwarder it keeps its own kind,
-//! which is the kind base of every ERC20 fungibility domain, and the backend creates its resources. Every other
-//! version is deprecated: an alias of the active one, which the backend consumes and converts. A deprecated
-//! version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it
-//! stays, even when the protocol adapter denies its logic ref, with entries that nothing can use.
+//! ERC20 fungibility domain under the label of the environment's forwarder, so its resources are fungible with every
+//! other listed version's behind that forwarder. A version that only the legacy ERC20 forwarders accept is a member
+//! only under the label of the legacy forwarder. Exactly one version is active: under the label of the environment's
+//! forwarder it keeps its own kind, which is the kind base of every ERC20 fungibility domain, and the backend creates
+//! its resources. Every other version is deprecated: an alias of the active one, which the backend consumes and
+//! converts. A deprecated version leaves the list only when no resource of it exists under the label of a recorded
+//! forwarder. Until then it stays, even when the protocol adapter denies its logic ref.
 
-use crate::entry::hex_digest;
+use crate::{Error, Result};
 use risc0_zkvm::Digest;
 use serde::{Deserialize, Serialize};
+use serde_with::hex::Hex;
+use serde_with::serde_as;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 /// Whether a circuit version, or a member, is the one the backend creates resources of.
@@ -24,26 +28,72 @@ pub enum Status {
 
 /// One listed version of the ERC20 transfer circuit.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(from = "CircuitVersionJson")]
 pub struct CircuitVersion {
     /// The circuit's release version. The crate that ships it can carry another version.
-    pub version: String,
+    pub version: semver::Version,
     /// The circuit's verifying key, which every resource of this version carries as its logic ref.
-    #[serde(with = "hex_digest")]
     pub logic_ref: Digest,
     pub status: Status,
+    /// Only the legacy ERC20 forwarders accept this version, so its resources carry only their labels. The trees
+    /// list it under no label of an environment's forwarder.
+    pub legacy_forwarders_only: bool,
 }
 
-#[derive(Deserialize)]
-struct File {
+/// The listed circuit versions of each resource type, in file order. The `_comment` is review context.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CircuitVersions {
+    _comment: Option<String>,
     #[serde(rename = "ERC20Resource")]
-    erc20: Vec<CircuitVersion>,
+    pub erc20: Vec<CircuitVersion>,
     #[serde(rename = "SPLTokenResource")]
-    spl_token: Vec<CircuitVersion>,
+    pub spl_token: Vec<CircuitVersion>,
 }
 
-static FILE: LazyLock<File> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../data/circuit-versions.json"))
-        .expect("circuit-versions.json: invalid JSON")
+impl CircuitVersions {
+    /// Reads lists in the format of `circuit-versions.json`. Rejects a field that the format does not have.
+    pub fn from_json(json: &str) -> Result<Self> {
+        Ok(serde_json::from_str(json)?)
+    }
+}
+
+/// A circuit version's form in the file. The `_comment` is review context.
+#[serde_as]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CircuitVersionJson {
+    _comment: Option<String>,
+    version: semver::Version,
+    #[serde_as(as = "Hex")]
+    logic_ref: Digest,
+    status: Status,
+    #[serde(default)]
+    legacy_forwarders_only: bool,
+}
+
+impl From<CircuitVersionJson> for CircuitVersion {
+    fn from(
+        CircuitVersionJson {
+            version,
+            logic_ref,
+            status,
+            legacy_forwarders_only,
+            ..
+        }: CircuitVersionJson,
+    ) -> Self {
+        Self {
+            version,
+            logic_ref,
+            status,
+            legacy_forwarders_only,
+        }
+    }
+}
+
+static FILE: LazyLock<CircuitVersions> = LazyLock::new(|| {
+    CircuitVersions::from_json(include_str!("../data/circuit-versions.json"))
+        .unwrap_or_else(|error| panic!("circuit-versions.json: {error}"))
 });
 
 /// The listed ERC20 circuit versions, in file order.
@@ -58,14 +108,14 @@ pub fn spl_token() -> &'static [CircuitVersion] {
 }
 
 /// The active ERC20 circuit version. Its kind under the label of the environment's forwarder is the kind base of
-/// every ERC20 fungibility domain. `check_erc20` says why there is exactly one.
+/// every ERC20 fungibility domain. `check` says why there is exactly one.
 pub fn erc20_active() -> &'static CircuitVersion {
-    active(erc20(), "ERC20")
+    embedded_active(erc20(), "ERC20Resource")
 }
 
-/// The active SPL token circuit version; `check_spl_token` says why there is exactly one.
+/// The active SPL token circuit version; `check` says why there is exactly one.
 pub fn spl_token_active() -> &'static CircuitVersion {
-    active(spl_token(), "SPL token")
+    embedded_active(spl_token(), "SPLTokenResource")
 }
 
 /// The listed ERC20 version a logic ref belongs to, if any.
@@ -78,23 +128,54 @@ pub fn spl_token_version(logic_ref: &Digest) -> Option<&'static CircuitVersion> 
     version(spl_token(), logic_ref)
 }
 
-/// `check` over the ERC20 list.
-pub fn check_erc20() -> Result<(), String> {
-    check(erc20())
-}
-
-/// `check` over the SPL token list.
-pub fn check_spl_token() -> Result<(), String> {
-    check(spl_token())
-}
-
-fn active(versions: &'static [CircuitVersion], resource: &str) -> &'static CircuitVersion {
-    versions
+/// Checks a list of circuit versions and returns its active version. Each version and each logic ref is listed once,
+/// exactly one version is active, the active version is the highest listed, and it is not a version that only the
+/// legacy forwarders accept, since it keeps its own kind under the label of the environment's forwarder. The third rule
+/// rules out making an old version active again, which is never the plan: the protocol adapter denies the logic ref of
+/// a broken release, and a higher release replaces it.
+pub fn check(versions: &[CircuitVersion]) -> Result<&CircuitVersion> {
+    let mut seen_versions = BTreeSet::new();
+    let mut seen_refs = BTreeMap::new();
+    for circuit in versions {
+        if !seen_versions.insert(&circuit.version) {
+            return Err(Error::DuplicateCircuitVersion(circuit.version.clone()));
+        }
+        if let Some(first) = seen_refs.insert(circuit.logic_ref, &circuit.version) {
+            return Err(Error::DuplicateCircuitLogicRef {
+                logic_ref: circuit.logic_ref,
+                first: first.clone(),
+                second: circuit.version.clone(),
+            });
+        }
+    }
+    let mut actives = versions
         .iter()
-        .find(|circuit| circuit.status == Status::Active)
-        .unwrap_or_else(|| {
-            panic!("circuit-versions.json lists no active {resource} circuit version")
-        })
+        .filter(|circuit| circuit.status == Status::Active);
+    let active = actives.next().ok_or(Error::NoActiveCircuitVersion)?;
+    if let Some(second) = actives.next() {
+        return Err(Error::TwoActiveCircuitVersions {
+            first: active.version.clone(),
+            second: second.version.clone(),
+        });
+    }
+    if let Some(highest) = versions.iter().max_by_key(|circuit| &circuit.version)
+        && highest.version > active.version
+    {
+        return Err(Error::ActiveCircuitVersionNotHighest {
+            active: active.version.clone(),
+            highest: highest.version.clone(),
+        });
+    }
+    if active.legacy_forwarders_only {
+        return Err(Error::ActiveCircuitVersionLegacyForwardersOnly(
+            active.version.clone(),
+        ));
+    }
+    Ok(active)
+}
+
+fn embedded_active(versions: &'static [CircuitVersion], resource: &str) -> &'static CircuitVersion {
+    check(versions).unwrap_or_else(|error| panic!("circuit-versions.json: {resource}: {error}"))
 }
 
 fn version(
@@ -104,46 +185,4 @@ fn version(
     versions
         .iter()
         .find(|circuit| circuit.logic_ref == *logic_ref)
-}
-
-/// Checks the list: every version and logic ref once, exactly one active version, and the active version is
-/// the highest listed. The last rule rules out making an old version active again, which is never the plan: the
-/// protocol adapter denies the logic ref of a broken release, and a higher release replaces it.
-fn check(versions: &[CircuitVersion]) -> Result<(), String> {
-    let mut seen_versions = std::collections::BTreeSet::new();
-    let mut seen_refs = std::collections::BTreeSet::new();
-    let mut parsed = Vec::new();
-    for circuit in versions {
-        if !seen_versions.insert(&circuit.version) {
-            return Err(format!("{} is listed twice", circuit.version));
-        }
-        if !seen_refs.insert(circuit.logic_ref) {
-            return Err(format!(
-                "the logic ref of {} is listed twice",
-                circuit.version
-            ));
-        }
-        let version = semver::Version::parse(&circuit.version)
-            .map_err(|error| format!("{} is not a version: {error}", circuit.version))?;
-        parsed.push((version, circuit));
-    }
-    let mut actives = parsed.iter().filter(|(_, c)| c.status == Status::Active);
-    let (active_version, active) = actives
-        .next()
-        .ok_or_else(|| "no version is active".to_string())?;
-    if let Some((_, other)) = actives.next() {
-        return Err(format!(
-            "{} and {} are both active; exactly one version is",
-            active.version, other.version
-        ));
-    }
-    if let Some((highest, _)) = parsed.iter().max_by(|a, b| a.0.cmp(&b.0))
-        && highest > active_version
-    {
-        return Err(format!(
-            "{} is active, but {highest} is listed and higher; an older version never becomes active again",
-            active.version
-        ));
-    }
-    Ok(())
 }
