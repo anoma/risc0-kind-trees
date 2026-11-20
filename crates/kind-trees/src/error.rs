@@ -49,6 +49,10 @@ pub enum Error {
         active: semver::Version,
         highest: semver::Version,
     },
+    #[error(
+        "the circuit version {0} is active, but only the legacy forwarders accept it; the active version keeps its own kind under the label of the environment's forwarder"
+    )]
+    ActiveCircuitVersionLegacyForwardersOnly(semver::Version),
     #[error("invalid CAIP-2 chain ID {value:?}: {reason}")]
     InvalidCaip2ChainId { value: String, reason: &'static str },
     #[error("no chain known for {0}")]

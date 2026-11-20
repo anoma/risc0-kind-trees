@@ -56,15 +56,18 @@ fn migrated_chains(environment: Environment) -> &'static BTreeSet<Caip2ChainId> 
     }
 }
 
-/// Adds a token's members under one label: every deprecated version, and the active version only if the token asks
-/// for a precomputed kind base.
+/// Adds a token's members under the label of the environment's forwarder: every deprecated version that the forwarder
+/// can accept, and the active version only if the token asks for a precomputed kind base.
 fn insert_members(
     kinds: &mut BTreeSet<Kind>,
     listed: &[CircuitVersion],
     label_ref: Digest,
     precompute_kind_base: bool,
 ) {
-    for circuit in listed {
+    for circuit in listed
+        .iter()
+        .filter(|circuit| !circuit.legacy_forwarders_only)
+    {
         if circuit.status == Status::Deprecated || precompute_kind_base {
             kinds.insert((circuit.logic_ref, label_ref));
         }

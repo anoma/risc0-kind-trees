@@ -10,11 +10,13 @@ pub fn circuits() -> Vec<CircuitVersion> {
             version: "1.0.0".parse().unwrap(),
             logic_ref: Digest::from_bytes([1; 32]),
             status: Status::Deprecated,
+            legacy_forwarders_only: false,
         },
         CircuitVersion {
             version: "2.0.0".parse().unwrap(),
             logic_ref: Digest::from_bytes([2; 32]),
             status: Status::Active,
+            legacy_forwarders_only: false,
         },
     ]
 }

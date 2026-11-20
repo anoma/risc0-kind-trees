@@ -9,6 +9,7 @@ fn circuit(version: &str, seed: u8, status: Status) -> CircuitVersion {
         version: version.parse().expect("a semantic version"),
         logic_ref: Digest::from_bytes([seed; 32]),
         status,
+        legacy_forwarders_only: false,
     }
 }
 
@@ -122,6 +123,19 @@ fn check_rejects_an_active_version_below_a_listed_version() {
     ));
 }
 
+/// The active version keeps its own kind under the label of the environment's forwarder.
+#[test]
+fn check_rejects_an_active_version_that_only_the_legacy_forwarders_accept() {
+    let list = [CircuitVersion {
+        legacy_forwarders_only: true,
+        ..circuit("2.0.0", 1, Status::Active)
+    }];
+    assert!(matches!(
+        check(&list),
+        Err(Error::ActiveCircuitVersionLegacyForwardersOnly(version)) if version == list[0].version
+    ));
+}
+
 /// Lists in the format of `circuit-versions.json`, with a `_comment` at each place the file may carry one.
 fn file() -> Value {
     json!({
@@ -141,6 +155,14 @@ fn circuit_versions_from_json_reads_the_lists_and_skips_the_comments() {
     let versions = CircuitVersions::from_json(&file().to_string()).unwrap();
     assert_eq!(versions.erc20, [circuit("1.0.0", 1, Status::Active)]);
     assert_eq!(versions.spl_token, []);
+}
+
+#[test]
+fn circuit_versions_from_json_reads_legacy_forwarders_only() {
+    let mut file = file();
+    file["ERC20Resource"][0]["legacy_forwarders_only"] = true.into();
+    let versions = CircuitVersions::from_json(&file.to_string()).unwrap();
+    assert!(versions.erc20[0].legacy_forwarders_only);
 }
 
 #[test]

@@ -1,18 +1,18 @@
 {
   "eip155:11155111": {
     "_comment": "sepolia",
-    "root": "647a2ea2bb832e7be12679d5d9a81dd74af157f7fd16980eb6a2538afa74009d"
+    "root": "e15439cac5ef269f6531d4722a6b1aa09782bf1e79661d5f77df951115ce28f6"
   },
   "eip155:143": {
     "_comment": "monad",
-    "root": "21d4d5f7be80e7af0fa429be990725d52e42aa3eaf2f7b09fb0c9e7020b833e5"
+    "root": "4b43fd5ebd3ff81b2f4ad1dafffa5e03310a490295f743340271da6079994652"
   },
   "eip155:56": {
     "_comment": "bsc",
-    "root": "66cfba8c50351dfea832e9d96f71babcb8646789465e958649dc7de82b7338eb"
+    "root": "1fc08bdf692059367b4d30b4a6dbf027d589b3e3eed88053b86147969f2c48f5"
   },
   "eip155:84532": {
     "_comment": "base-sepolia",
-    "root": "e6805a4fa070b153bdfa64474532910b726b4c345ef6300351506bf432b45859"
+    "root": "943fefd43482396d2bf9fee33079bc8e0bf57a09271c9f3aa4e6184665165790"
   }
 }

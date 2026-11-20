@@ -1,10 +1,11 @@
 //! The ERC20 circuit versions, read from `data/circuit-versions.json`. Every listed version is a member of every
-//! ERC20 fungibility domain, so its resources are fungible with every other listed version's behind the same
-//! forwarder. Exactly one version is active: under the label of the environment's forwarder it keeps its own kind,
-//! which is the kind base of every ERC20 fungibility domain, and the backend creates its resources. Every other
-//! version is deprecated: an alias of the active one, which the backend consumes and converts. A deprecated
-//! version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it
-//! stays, even when the protocol adapter denies its logic ref, with entries that nothing can use.
+//! ERC20 fungibility domain under the label of the environment's forwarder, so its resources are fungible with every
+//! other listed version's behind that forwarder. A version that only the legacy ERC20 forwarders accept is a member
+//! only under the label of the legacy forwarder. Exactly one version is active: under the label of the environment's
+//! forwarder it keeps its own kind, which is the kind base of every ERC20 fungibility domain, and the backend creates
+//! its resources. Every other version is deprecated: an alias of the active one, which the backend consumes and
+//! converts. A deprecated version leaves the list only when no resource of it exists under the label of a recorded
+//! forwarder. Until then it stays, even when the protocol adapter denies its logic ref.
 
 use crate::{Error, Result};
 use risc0_zkvm::Digest;
@@ -34,6 +35,9 @@ pub struct CircuitVersion {
     /// The circuit's verifying key, which every resource of this version carries as its logic ref.
     pub logic_ref: Digest,
     pub status: Status,
+    /// Only the legacy ERC20 forwarders accept this version, so its resources carry only their labels. The trees
+    /// list it under no label of an environment's forwarder.
+    pub legacy_forwarders_only: bool,
 }
 
 /// The listed circuit versions of each resource type, in file order. The `_comment` is review context.
@@ -64,6 +68,8 @@ struct CircuitVersionJson {
     #[serde_as(as = "Hex")]
     logic_ref: Digest,
     status: Status,
+    #[serde(default)]
+    legacy_forwarders_only: bool,
 }
 
 impl From<CircuitVersionJson> for CircuitVersion {
@@ -72,6 +78,7 @@ impl From<CircuitVersionJson> for CircuitVersion {
             version,
             logic_ref,
             status,
+            legacy_forwarders_only,
             ..
         }: CircuitVersionJson,
     ) -> Self {
@@ -79,6 +86,7 @@ impl From<CircuitVersionJson> for CircuitVersion {
             version,
             logic_ref,
             status,
+            legacy_forwarders_only,
         }
     }
 }
@@ -121,9 +129,10 @@ pub fn spl_token_version(logic_ref: &Digest) -> Option<&'static CircuitVersion> 
 }
 
 /// Checks a list of circuit versions and returns its active version. Each version and each logic ref is listed once,
-/// exactly one version is active, and the active version is the highest listed. The last rule rules out making an old
-/// version active again, which is never the plan: the protocol adapter denies the logic ref of a broken release, and a
-/// higher release replaces it.
+/// exactly one version is active, the active version is the highest listed, and it is not a version that only the
+/// legacy forwarders accept, since it keeps its own kind under the label of the environment's forwarder. The third rule
+/// rules out making an old version active again, which is never the plan: the protocol adapter denies the logic ref of
+/// a broken release, and a higher release replaces it.
 pub fn check(versions: &[CircuitVersion]) -> Result<&CircuitVersion> {
     let mut seen_versions = BTreeSet::new();
     let mut seen_refs = BTreeMap::new();
@@ -156,6 +165,11 @@ pub fn check(versions: &[CircuitVersion]) -> Result<&CircuitVersion> {
             active: active.version.clone(),
             highest: highest.version.clone(),
         });
+    }
+    if active.legacy_forwarders_only {
+        return Err(Error::ActiveCircuitVersionLegacyForwardersOnly(
+            active.version.clone(),
+        ));
     }
     Ok(active)
 }
