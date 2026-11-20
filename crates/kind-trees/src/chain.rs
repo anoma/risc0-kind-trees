@@ -9,6 +9,7 @@ use serde::de::DeserializeOwned;
 use serde_with::rust::maps_duplicate_key_is_error;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use solana_cluster_type::ClusterType;
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::str::FromStr;
@@ -16,9 +17,7 @@ use std::str::FromStr;
 /// A CAIP-2 chain ID. The namespace is 3 to 8 characters of `a-z`, `0-9` and `-`. The reference is 1 to 32 characters
 /// of `a-z`, `A-Z`, `0-9`, `-` and `_`. An `eip155` reference is the decimal chain ID without a leading zero, so that
 /// one chain has one ID.
-#[derive(
-    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SerializeDisplay, DeserializeFromStr,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SerializeDisplay, DeserializeFromStr)]
 pub struct Caip2ChainId {
     namespace: String,
     reference: String,
@@ -119,6 +118,23 @@ impl FromStr for Caip2ChainId {
 impl fmt::Display for Caip2ChainId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.namespace, self.reference)
+    }
+}
+
+/// Orders by namespace, then the EVM chains by their EIP-155 chain ID, then by reference.
+impl Ord for Caip2ChainId {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (&self.namespace, self.eip155_chain_id(), &self.reference).cmp(&(
+            &other.namespace,
+            other.eip155_chain_id(),
+            &other.reference,
+        ))
+    }
+}
+
+impl PartialOrd for Caip2ChainId {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

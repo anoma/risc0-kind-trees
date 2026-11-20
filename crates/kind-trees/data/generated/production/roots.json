@@ -3,20 +3,20 @@
     "_comment": "mainnet",
     "root": "94579913b429eb143171e2a66aeae31e4c68d9dc08dd4703fe8f78e0caf6c45a"
   },
-  "eip155:143": {
-    "_comment": "monad",
-    "root": "5748dfaac0dcf09a22ac8b66b68d551c7239e6a9509d976af4dc679c43c8eaf6"
-  },
-  "eip155:42161": {
-    "_comment": "arbitrum",
-    "root": "018442d011944dd064176f05d212c3b96f1a7a2cdaa9f4a4c9a1bfd16bfa71e5"
-  },
   "eip155:56": {
     "_comment": "bsc",
     "root": "54758fd1816d4059f2a92e0e6737817e5a8e40a12d9b584c30538f259f20f6e4"
   },
+  "eip155:143": {
+    "_comment": "monad",
+    "root": "5748dfaac0dcf09a22ac8b66b68d551c7239e6a9509d976af4dc679c43c8eaf6"
+  },
   "eip155:8453": {
     "_comment": "base",
     "root": "098d2db08195ab2400323e10abeced01f07a0e773aaccd30827311151eab3107"
+  },
+  "eip155:42161": {
+    "_comment": "arbitrum",
+    "root": "018442d011944dd064176f05d212c3b96f1a7a2cdaa9f4a4c9a1bfd16bfa71e5"
   }
 }
