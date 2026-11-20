@@ -1,7 +1,8 @@
 //! The promotion gate for the exit rule — a kind with unspent resources must always have a way out: every
-//! ERC20 and SPL token forwarder of the promoted environment accepts a listed circuit version. Every listed version is a member of every fungibility domain, so an accepted version that is listed
-//! gives every other listed version an exit by conversion. Runs only on a pull request into `staging` or
-//! `main`, selected as the freshness gate is; elsewhere it skips.
+//! ERC20 and SPL token forwarder of the promoted environment accepts a listed circuit version that is a member under
+//! its label, so not a version that only the legacy forwarders accept. Every such version is a member of every
+//! fungibility domain under that label, so the accepted version gives every other member an exit by conversion. Runs
+//! only on a pull request into `staging` or `main`, selected as the freshness gate is; elsewhere it skips.
 
 use anoma_risc0_kind_trees::{Chain, circuits, tree};
 use anoma_risc0_kind_trees_integration_test::{provider, solana_rpc};
@@ -63,9 +64,12 @@ async fn the_promoted_forwarders_accept_a_listed_circuit_version() -> Result<()>
                     .with_context(|| chain.to_string())?;
                 let accepted =
                     Digest::try_from(accepted.as_slice()).context("a logic ref is 32 bytes")?;
+                let version = circuits::erc20_version(&accepted).with_context(|| {
+                    format!("{chain}: the forwarder accepts {accepted}, which circuit-versions.json does not list")
+                })?;
                 ensure!(
-                    circuits::erc20_version(&accepted).is_some(),
-                    "{chain}: the forwarder accepts {accepted}, which circuit-versions.json does not list"
+                    !version.legacy_forwarders_only,
+                    "{chain}: the forwarder accepts {accepted}, which circuit-versions.json lists as legacy_forwarders_only"
                 );
             }
             Chain::Solana(cluster) => {

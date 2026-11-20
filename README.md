@@ -54,7 +54,7 @@ An entry carries its kind, the kind base it is assigned, and a `_metadata` objec
 }
 ```
 
-That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, all carrying the same `kind_base`. The kind base is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_base`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind base instead of computing it.
+That entry is the active member of the WETH fungibility domain on Base Sepolia. A fungibility domain is one forwarder holding one token, and every listed circuit version has a member under that forwarder's label, except a version that only the legacy forwarders accept, all carrying the same `kind_base`. The kind base is the kind of the active version under that label, so every deprecated version's entry is an alias of it; a version outside the fungibility domain is fungible with nothing. The active version's entry assigns its own kind, which the circuit computes anyway, so it is listed only because WETH sets `precompute_kind_base`. Generic call has no fungibility domain, and its entry assigns its own kind for the same reason: the circuit reads its kind base instead of computing it.
 
 An alias also says what it is a second name for. Its `alias_of` names the kind it takes its kind base from, so a reviewer reads it without recomputing anything, and its `status` is `deprecated`: a member is `active` if and only if it has no `alias_of`. When version 3.0.0 becomes active, 2.0.0 becomes deprecated, every kind base moves to 3.0.0's kind, and the WETH entry for 2.0.0 becomes this:
 
@@ -90,7 +90,7 @@ Members are never authored. A circuit release is one appended line in [`crates/k
 }
 ```
 
-The generator then writes one more member per token on every chain that has the token, so neither a token nor a chain can be left out, and checks every version whose crate is pinned against the logic ref that crate compiles to. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it stays, even when the protocol adapter denies its logic ref, with entries that nothing can use (ADR-0008).
+The generator then writes one more member per token on every chain that has the token, so neither a token nor a chain can be left out, and checks every version whose crate is pinned against the logic ref that crate compiles to. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder. Until then it stays, even when the protocol adapter denies its logic ref (ADR-0008). A version marked `legacy_forwarders_only` has members only under the labels of the legacy forwarders, for the tokens that soft-migrate.
 
 ## Workflows
 

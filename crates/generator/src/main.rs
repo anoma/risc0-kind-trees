@@ -125,10 +125,20 @@ fn versions() -> Result<Versions> {
 }
 
 /// Each list must pass `circuits::check`, and the pinned ERC20 circuit crate must be listed with the logic ref it
-/// compiles to. Raising the pin without listing the release stops here, and so does a mistyped logic ref.
+/// compiles to. Raising the pin without listing the release stops here, and so does a mistyped logic ref. Solana has
+/// no legacy forwarder, so no SPL token version can be one that only legacy forwarders accept.
 fn check_circuit_versions(versions: &Versions) -> Result<()> {
     circuits::check(circuits::erc20()).context("circuit-versions.json: ERC20Resource")?;
     circuits::check(circuits::spl_token()).context("circuit-versions.json: SPLTokenResource")?;
+    if let Some(circuit) = circuits::spl_token()
+        .iter()
+        .find(|circuit| circuit.legacy_forwarders_only)
+    {
+        anyhow::bail!(
+            "circuit-versions.json: SPLTokenResource {} sets legacy_forwarders_only, but Solana has no legacy forwarder",
+            circuit.version
+        );
+    }
     let compiled = *anomapay_erc20_library::ANOMAPAY_ERC20_CIRCUIT_ID;
     ensure!(
         circuits::erc20_version(&compiled).is_some(),

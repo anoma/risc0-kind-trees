@@ -12,42 +12,6 @@
   {
     "_metadata": {
       "type": "ERC20Resource",
-      "version": "1.0.0",
-      "name": "WETH",
-      "token": "0x4200000000000000000000000000000000000006",
-      "forwarder": "0x2CE2458C4E87ba81D7bF4050DdA706EF462A03e7",
-      "status": "deprecated",
-      "alias_of": {
-        "version": "2.0.0",
-        "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
-        "label_ref": "8abfa3419d2d82fdde698993d33965a5f3933b07e899f70dae3ef7dc5677c7bb"
-      }
-    },
-    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
-    "label_ref": "8abfa3419d2d82fdde698993d33965a5f3933b07e899f70dae3ef7dc5677c7bb",
-    "kind_base": "049bf8e8a51e7bed5a89fe6bd75a3e821a074a12a010f9b2e22711983d2b3a1434193e43474b4261972cf30710ec38fd283b7fde65f80b52729bbfa95bd03b5710"
-  },
-  {
-    "_metadata": {
-      "type": "ERC20Resource",
-      "version": "1.0.0",
-      "name": "USDC",
-      "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "forwarder": "0x2CE2458C4E87ba81D7bF4050DdA706EF462A03e7",
-      "status": "deprecated",
-      "alias_of": {
-        "version": "2.0.0",
-        "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
-        "label_ref": "ccf0d3b4d78bbe86dd31e57e28700f1d3087c16a9901e54fb155d84c2091ce49"
-      }
-    },
-    "logic_ref": "bc12323668c37c3d381ca798f11116f35fb1639d12239b29da7810df3985e7ad",
-    "label_ref": "ccf0d3b4d78bbe86dd31e57e28700f1d3087c16a9901e54fb155d84c2091ce49",
-    "kind_base": "0494f4bfa62ef3820fafb845078a7a67cd596b37c8cf3ca351ffa8160eed245a324a8ab28b1c7fad6d628a166048fa96b3802c80a21290d4f33f7d9d4d6b12aa0c"
-  },
-  {
-    "_metadata": {
-      "type": "ERC20Resource",
       "version": "2.0.0",
       "name": "WETH",
       "token": "0x4200000000000000000000000000000000000006",

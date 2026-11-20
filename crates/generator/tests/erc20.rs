@@ -141,6 +141,43 @@ fn erc20_entries_adds_the_legacy_member_only_for_a_token_that_soft_migrates() {
     ));
 }
 
+/// The legacy forwarders accept the version, so its resources exist only under their labels.
+#[test]
+fn erc20_entries_lists_a_version_that_only_the_legacy_forwarders_accept_only_under_the_legacy_label()
+ {
+    let mut circuits = circuits();
+    circuits[0].legacy_forwarders_only = true;
+    let (deprecated, _) = deprecated_and_active(&circuits);
+    let legacy = legacy();
+    assert_eq!(
+        legacy.logic_ref, deprecated.logic_ref,
+        "premise: the legacy forwarder accepts the deprecated version"
+    );
+    let address = token(true, false).address;
+
+    let staying = erc20_entries(
+        &[token(false, false)],
+        &circuits,
+        forwarder(),
+        Some(&legacy),
+    )
+    .unwrap();
+    assert_eq!(
+        staying,
+        [],
+        "no member of a token that does not soft-migrate"
+    );
+
+    let migrating =
+        erc20_entries(&[token(true, false)], &circuits, forwarder(), Some(&legacy)).unwrap();
+    let labels: Vec<Digest> = migrating.iter().map(|entry| entry.label_ref).collect();
+    assert_eq!(
+        labels,
+        [kind::erc20_label_ref(&legacy.address, &address)],
+        "one member, under the legacy label"
+    );
+}
+
 #[test]
 fn erc20_entries_adds_no_legacy_member_on_a_chain_without_a_legacy_forwarder() {
     let circuits = circuits();

@@ -25,8 +25,8 @@ pub struct GenericCallCircuit {
 
 /// The ERC20 entries of a chain: one fungibility domain for each token under the label of `forwarder`, the
 /// forwarder of the environment. For a token that soft-migrates, the logic ref of `legacy` under the label of the
-/// legacy forwarder is one more member; the caller passes `legacy` only for a migrated chain. Errors if `circuits`
-/// fails `circuits::check`.
+/// legacy forwarder is one more member; the caller passes `legacy` only for a migrated chain. A version that only the
+/// legacy forwarders accept is a member only there. Errors if `circuits` fails `circuits::check`.
 pub fn erc20_entries(
     tokens: &[Token],
     circuits: &[CircuitVersion],
@@ -118,9 +118,9 @@ pub fn generic_call_entry(forwarder: Address, circuit: &GenericCallCircuit) -> E
 }
 
 /// One token's fungibility domain under `label_ref`, the label of the environment's forwarder: every deprecated
-/// circuit version as an alias of the active version under that label, and the active version itself, assigned its
-/// own kind, only if `precompute` is set for the token. Returns the domain's kind base and the kind every alias
-/// names, for members added under another label.
+/// circuit version that the forwarder can accept as an alias of the active version under that label, and the active
+/// version itself, assigned its own kind, only if `precompute` is set for the token. Returns the domain's kind base and
+/// the kind every alias names, for members added under another label.
 fn domain(
     circuits: &[CircuitVersion],
     label_ref: Digest,
@@ -135,7 +135,10 @@ fn domain(
         logic_ref: active.logic_ref,
         label_ref,
     };
-    for circuit in circuits {
+    for circuit in circuits
+        .iter()
+        .filter(|circuit| !circuit.legacy_forwarders_only)
+    {
         let alias_of = (circuit.status == Status::Deprecated).then(|| active_kind.clone());
         if alias_of.is_none() && !precompute {
             continue;
