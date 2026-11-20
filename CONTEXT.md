@@ -57,7 +57,7 @@ An entry that assigns a kind its own kind base, so that the compliance circuit m
 _Avoid_: precomputed kind point, cached kind, fast kind, supported kind (a token without an entry is still supported)
 
 **Circuit version**:
-One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-versions.json` with its logic ref and a status. The two lists follow the same rules, each over its own chains. Exactly one version is **active**: under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources. Every other is **deprecated**: an alias of the active one, which the backend consumes and converts. The active version is the highest listed, and an older version never becomes active again. Every listed version is a member of every fungibility domain of its resource type. A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder.
+One release of the ERC20 or SPL token transfer circuit, listed in `data/circuit-versions.json` with its logic ref and a status. The two lists follow the same rules, each over its own chains. Exactly one version is **active**: under the label of the environment's forwarder it keeps its own kind, and the backend creates its resources. Every other is **deprecated**: an alias of the active one, which the backend consumes and converts. The active version is the highest listed, and an older version never becomes active again. Every listed version is a member of every fungibility domain of its resource type under the label of the environment's forwarder, except a version that only the legacy ERC20 forwarders accept (`legacy_forwarders_only`). A deprecated version leaves the list only when no resource of it exists under the label of a recorded forwarder.
 _Avoid_: succession, upgrade, migration (the migration is what listing enables, not the record of it), inherit (nothing passes from one version to another — both kinds are assigned one kind base)
 
 **Legacy protocol adapter**:
@@ -65,7 +65,7 @@ The protocol adapter that a chain ran before its upgradeable protocol adapter: o
 _Avoid_: v1 protocol adapter, immutable protocol adapter
 
 **Legacy ERC20 forwarder**:
-The ERC20 forwarder that ran with a chain's legacy protocol adapter: one immutable contract. No new one is deployed. Under its label, the logic ref it accepts is a member of every ERC20 fungibility domain on its chain, so its resources convert and leave through the environment's forwarder. Recorded in the forwarder repository's deployment record, never here.
+The ERC20 forwarder that ran with a chain's legacy protocol adapter: one immutable contract. No new one is deployed. On a migrated chain, the logic ref it accepts is a member under its label of the fungibility domain of each token that soft-migrates, so these resources convert and leave through the environment's forwarder. Recorded in the forwarder repository's deployment record, never here.
 _Avoid_: V1 forwarder, retired forwarder, old forwarder, immutable ERC20 forwarder
 
 **Legacy-forwarder resource**:
