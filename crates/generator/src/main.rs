@@ -227,7 +227,11 @@ fn main() -> Result<()> {
         for (cluster, _) in anoma_pa_solana_client::addresses::protocol_adapter_deployments_map(
             solana_environment(environment),
         ) {
-            chains.push(Chain::Solana(cluster.try_into()?));
+            let cluster: SolanaCluster = cluster.try_into()?;
+            // A cluster without a listed mint gets no tree.
+            if !tokens::spl_on(cluster).is_empty() {
+                chains.push(Chain::Solana(cluster));
+            }
         }
         chains.sort();
 

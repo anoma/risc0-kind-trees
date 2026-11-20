@@ -2,6 +2,7 @@ use anoma_pa_solana_client::addresses::{
     Environment, protocol_adapter_address, protocol_adapter_deployments_map,
 };
 use anoma_risc0_kind_trees::chain::{Caip2ChainId, SolanaCluster};
+use anoma_risc0_kind_trees::tokens::spl_on;
 use anoma_risc0_kind_trees::tree::{production, staging};
 use anomapay_spl_token_forwarder_client::addresses::{
     spl_token_forwarder_address, spl_token_forwarder_deployments_map,
@@ -37,10 +38,10 @@ fn staging_records_the_devnet_programs_and_production_none() {
     assert!(spl_token_forwarder_deployments_map(Environment::Production).is_empty());
 }
 
-/// Each environment's Solana trees are those of the clusters its adapter record holds: no tree for a cluster
-/// without a recorded adapter, and no recorded adapter without a tree.
+/// Each environment's Solana trees are those of the clusters on which its adapter record holds an adapter and
+/// `tokens.json` lists a mint: no tree for any other cluster.
 #[test]
-fn the_solana_trees_are_the_recorded_adapters_clusters() {
+fn the_solana_trees_are_the_recorded_adapters_clusters_with_a_listed_mint() {
     for (environment, chains) in [
         (Environment::Staging, staging::roots()),
         (Environment::Production, production::roots()),
@@ -53,14 +54,16 @@ fn the_solana_trees_are_the_recorded_adapters_clusters() {
         let mut recorded: Vec<Caip2ChainId> = protocol_adapter_deployments_map(environment)
             .into_iter()
             .map(|(cluster, _)| {
-                Caip2ChainId::from(
-                    SolanaCluster::try_from(cluster)
-                        .unwrap_or_else(|error| panic!("{environment:?}: {error}")),
-                )
+                SolanaCluster::try_from(cluster)
+                    .unwrap_or_else(|error| panic!("{environment:?}: {error}"))
             })
+            .filter(|&cluster| !spl_on(cluster).is_empty())
+            .map(Caip2ChainId::from)
             .collect();
         recorded.sort();
-        println!("{environment:?}: trees {trees:?}, recorded adapters {recorded:?}");
+        println!(
+            "{environment:?}: trees {trees:?}, recorded adapters with a listed mint {recorded:?}"
+        );
         assert_eq!(trees, recorded, "{environment:?}");
     }
 }
