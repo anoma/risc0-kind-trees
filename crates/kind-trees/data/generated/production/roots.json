@@ -9,7 +9,7 @@
   },
   "eip155:42161": {
     "_comment": "arbitrum",
-    "root": "81c4a590f5f9e1507ae7f07e3ffa503db13ac83a599a463ff40b92f1f1c6cf0f"
+    "root": "be8ab96041aab321b8d8f21579d1e15dce6f263ee9dab089da622c85b44ad366"
   },
   "eip155:56": {
     "_comment": "bsc",
