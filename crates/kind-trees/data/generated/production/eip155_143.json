@@ -155,18 +155,5 @@
     "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
     "label_ref": "efffac08311325f42cdbc13aa086bf252a4cdc0f8f093d675ace1b6af6e94c67",
     "kind_base": "04ba14a43e2e53de0ba264790c9f8debe76397679dfd84cc8f25837838d3dde0c95d87a29bfc7b15471b4d72e18c814324b5d84855880bdd2fcce5a7e86eda6945"
-  },
-  {
-    "_metadata": {
-      "type": "ERC20Resource",
-      "version": "2.0.0",
-      "name": "WETH",
-      "token": "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242",
-      "forwarder": "0x76602954699Ace9575C6Db3C4AcbcFed9c693B0c",
-      "status": "active"
-    },
-    "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
-    "label_ref": "f95427cccc1c0e51a1dd3b1dd845d7ef8ff69226f89821526ce5275812c59361",
-    "kind_base": "04c9b6d7aa2e54d3b5fa718e0e0ac57fea6f188f4f6936072bc8c16eae95a76932a20c8f90246726739660f687656a18890fa526e8199cfcc1197614f87e26f5e9"
   }
 ]

@@ -214,19 +214,6 @@
     "_metadata": {
       "type": "ERC20Resource",
       "version": "2.0.0",
-      "name": "cbBTC",
-      "token": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
-      "forwarder": "0xbB8271dE03007C0d117C9380d9705A2f087b1Fe2",
-      "status": "active"
-    },
-    "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
-    "label_ref": "ccb85f3dc255e0ec8b71d1c5c71723be294e36803a2cda73e59f3794aa96df1b",
-    "kind_base": "043e50086a17af8885ca02558810ac5d95db15c8ce928d9d15559cd93b8401825af0f3dd802b396879524637d502d7484cb4b765248b23496904d46801cce40805"
-  },
-  {
-    "_metadata": {
-      "type": "ERC20Resource",
-      "version": "2.0.0",
       "name": "WETH",
       "token": "0x4200000000000000000000000000000000000006",
       "forwarder": "0xbB8271dE03007C0d117C9380d9705A2f087b1Fe2",

@@ -5,11 +5,11 @@
   },
   "eip155:143": {
     "_comment": "monad",
-    "root": "d70b6170c4104d064cb61d654ac5a6d95c9c910a44892a00abea682d061d13c7"
+    "root": "21d4d5f7be80e7af0fa429be990725d52e42aa3eaf2f7b09fb0c9e7020b833e5"
   },
   "eip155:56": {
     "_comment": "bsc",
-    "root": "67a613d06ee0b97194da714afd91e044035bef6eed442a321687e39d9c9ee17e"
+    "root": "66cfba8c50351dfea832e9d96f71babcb8646789465e958649dc7de82b7338eb"
   },
   "eip155:84532": {
     "_comment": "base-sepolia",

@@ -134,19 +134,6 @@
     "_metadata": {
       "type": "ERC20Resource",
       "version": "2.0.0",
-      "name": "WETH",
-      "token": "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242",
-      "forwarder": "0x671F21790ABAd8785Fc70B1ed0cdE5207940c51D",
-      "status": "active"
-    },
-    "logic_ref": "bcab4a348e091a47923a602d09d79077ff8a31f227355c9acdf628b6900db9f3",
-    "label_ref": "735cd0492c005d80174fdbf8cd4ac6bbf295061c218bf845805a8dc5a8ba3923",
-    "kind_base": "04ee4dbef92df5cfc5328b6448f62b3f6901adbb4d7643006a90b9ff331a24ecebc3a037cfe0c2ac0ebf5cb1e2f80a21f310a470f2f14d8bf2c32a25391e62fe0b"
-  },
-  {
-    "_metadata": {
-      "type": "ERC20Resource",
-      "version": "2.0.0",
       "name": "USDC",
       "token": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
       "forwarder": "0x671F21790ABAd8785Fc70B1ed0cdE5207940c51D",
