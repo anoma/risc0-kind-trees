@@ -90,6 +90,22 @@ fn a_json_map_key_round_trips() {
 }
 
 #[test]
+fn cmp_orders_by_namespace_then_by_eip155_chain_id() {
+    let base_sepolia = Caip2ChainId::from(NamedChain::BaseSepolia);
+    let sepolia = Caip2ChainId::from(NamedChain::Sepolia);
+    let solana = parse(SOLANA_MAINNET).unwrap();
+    assert!(
+        base_sepolia.to_string() > sepolia.to_string(),
+        "premise: as text, Base Sepolia comes after Sepolia"
+    );
+
+    let mut ids = [solana.clone(), sepolia.clone(), base_sepolia.clone()];
+    ids.sort();
+
+    assert_eq!(ids, [base_sepolia, sepolia, solana]);
+}
+
+#[test]
 fn deserialize_rejects_a_malformed_json_key() {
     assert!(serde_json::from_str::<BTreeMap<Caip2ChainId, u8>>(r#"{"11155111":1}"#).is_err());
 }
